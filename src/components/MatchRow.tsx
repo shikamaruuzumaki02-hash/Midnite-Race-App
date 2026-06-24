@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { MapPin, Trophy } from "lucide-react";
+import { getNextRoundName, isRoundComplete, pairWinnersForNextRound } from "@/lib/bracket";
 import type { Match, TournamentFormat } from "@/types/database";
 
 export default function MatchRow({
@@ -17,9 +18,76 @@ export default function MatchRow({
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
   const [showResult, setShowResult] = useState(false);
+  const [bracketError, setBracketError] = useState<string | null>(null);
+
+  async function advanceBracketIfRoundComplete() {
+    if (!match.round) return;
+
+    // Busca todas as partidas da mesma rodada deste torneio, na ordem em que
+    // foram criadas (mesma ordem de geração, importante para o pareamento correto).
+    const { data: roundMatches, error: fetchError } = await supabase
+      .from("matches")
+      .select("*")
+      .eq("tournament_id", match.tournament_id)
+      .eq("round", match.round)
+      .order("created_at", { ascending: true });
+
+    if (fetchError || !roundMatches) return;
+
+    if (!isRoundComplete(roundMatches as Match[])) return;
+
+    // Conta quantos pilotos tinha o torneio originalmente (inscritos),
+    // para saber qual o próximo nome de rodada.
+    const { count } = await supabase
+      .from("tournament_entries")
+      .select("*", { count: "exact", head: true })
+      .eq("tournament_id", match.tournament_id);
+
+    if (!count) return;
+
+    let nextRoundName: string | null;
+    try {
+      nextRoundName = getNextRoundName(match.round, count);
+    } catch {
+      return;
+    }
+
+    // Se já era a Final, não há próxima rodada a gerar.
+    if (!nextRoundName) return;
+
+    // Evita duplicar: se a próxima rodada já existe, não gera de novo.
+    const { data: existingNextRound } = await supabase
+      .from("matches")
+      .select("id")
+      .eq("tournament_id", match.tournament_id)
+      .eq("round", nextRoundName)
+      .limit(1);
+
+    if (existingNextRound && existingNextRound.length > 0) return;
+
+    try {
+      const pairs = pairWinnersForNextRound(roundMatches as Match[]);
+
+      const rowsToInsert = pairs.map((pair) => ({
+        tournament_id: match.tournament_id,
+        round: nextRoundName,
+        driver_a_id: pair.driverAId,
+        driver_b_id: pair.driverBId,
+        status: "SCHEDULED",
+      }));
+
+      const { error: insertError } = await supabase.from("matches").insert(rowsToInsert);
+      if (insertError) {
+        setBracketError(`Rodada concluída, mas houve erro ao gerar a próxima: ${insertError.message}`);
+      }
+    } catch (err) {
+      setBracketError(err instanceof Error ? err.message : "Erro ao avançar a chave.");
+    }
+  }
 
   async function recordWinner(winnerId: string) {
     setLoading(true);
+    setBracketError(null);
 
     const loserId = winnerId === match.driver_a_id ? match.driver_b_id : match.driver_a_id;
 
@@ -51,6 +119,10 @@ export default function MatchRow({
           .update({ losses: loserEntry.losses + 1 })
           .eq("id", loserEntry.id);
       }
+    }
+
+    if (format === "KNOCKOUT") {
+      await advanceBracketIfRoundComplete();
     }
 
     setLoading(false);
@@ -164,6 +236,12 @@ export default function MatchRow({
         >
           LANÇAR RESULTADO →
         </button>
+      )}
+
+      {bracketError && (
+        <p className="mt-3 text-xs text-danger border border-danger/30 bg-danger/10 rounded-sm px-3 py-2">
+          {bracketError}
+        </p>
       )}
     </div>
   );
