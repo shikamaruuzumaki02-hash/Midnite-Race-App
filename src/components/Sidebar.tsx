@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Flag, Crown, ChevronRight, Lock, Settings, Plus, LogOut, Users, Menu, X } from "lucide-react";
+import { Flag, Crown, ChevronRight, Lock, Settings, Plus, LogOut, Users, Menu, X, MapPin } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Tournament, Role } from "@/types/database";
 
@@ -33,7 +33,6 @@ export default function Sidebar({
 
   return (
     <>
-      {/* Botão hambúrguer — só aparece em telas pequenas */}
       <button
         onClick={() => setMobileOpen(true)}
         className="lg:hidden fixed top-4 left-4 z-30 w-10 h-10 flex items-center justify-center bg-asphalt-panel border border-asphalt-border rounded-sm text-ink"
@@ -42,7 +41,6 @@ export default function Sidebar({
         <Menu size={20} />
       </button>
 
-      {/* Fundo escurecido por trás do menu, ao tocar fora ele fecha — só em mobile */}
       {mobileOpen && (
         <div
           onClick={() => setMobileOpen(false)}
@@ -88,6 +86,15 @@ export default function Sidebar({
             icon={Users}
             label="Pilotos"
             active={pathname === "/admin/pilotos" || pathname === "/admin/pilotos/novo"}
+            onClick={() => setMobileOpen(false)}
+          />
+        )}
+        {role === "ADMIN" && (
+          <SidebarLink
+            href="/admin/pistas"
+            icon={MapPin}
+            label="Pistas"
+            active={pathname === "/admin/pistas"}
             onClick={() => setMobileOpen(false)}
           />
         )}
