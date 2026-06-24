@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Flag, Crown, ChevronRight, Lock, Settings, Plus, LogOut, Users } from "lucide-react";
+import { Flag, Crown, ChevronRight, Lock, Settings, Plus, LogOut, Users, Menu, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Tournament, Role } from "@/types/database";
 
@@ -18,6 +19,7 @@ export default function Sidebar({
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const ongoing = tournaments.filter((t) => t.status === "ONGOING");
   const past = tournaments.filter((t) => t.status === "FINISHED");
@@ -30,25 +32,55 @@ export default function Sidebar({
   }
 
   return (
-    <aside className="w-[280px] shrink-0 bg-asphalt-panel border-r border-asphalt-border flex flex-col relative z-10 h-screen sticky top-0">
-      <div className="px-6 py-7 border-b border-asphalt-border">
-        <Link href="/">
-          <div className="font-display text-2xl leading-none tracking-wider text-ink">
-            MIDNITE<span className="text-ember">BR</span>
-          </div>
-        </Link>
-        <div className="font-mono text-[10px] tracking-[0.3em] text-ink-faint mt-1">
-          SSR — STREET SERIES
+    <>
+      {/* Botão hambúrguer — só aparece em telas pequenas */}
+      <button
+        onClick={() => setMobileOpen(true)}
+        className="lg:hidden fixed top-4 left-4 z-30 w-10 h-10 flex items-center justify-center bg-asphalt-panel border border-asphalt-border rounded-sm text-ink"
+        aria-label="Abrir menu"
+      >
+        <Menu size={20} />
+      </button>
+
+      {/* Fundo escurecido por trás do menu, ao tocar fora ele fecha — só em mobile */}
+      {mobileOpen && (
+        <div
+          onClick={() => setMobileOpen(false)}
+          className="lg:hidden fixed inset-0 bg-black/60 z-30"
+        />
+      )}
+
+      <aside
+        className={`w-[280px] shrink-0 bg-asphalt-panel border-r border-asphalt-border flex flex-col fixed lg:sticky top-0 h-screen z-40 transition-transform duration-200 ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        } lg:translate-x-0`}
+      >
+        <div className="px-6 py-7 border-b border-asphalt-border flex items-center justify-between">
+          <Link href="/" onClick={() => setMobileOpen(false)}>
+            <div className="font-display text-2xl leading-none tracking-wider text-ink">
+              MIDNITE<span className="text-ember">BR</span>
+            </div>
+            <div className="font-mono text-[10px] tracking-[0.3em] text-ink-faint mt-1">
+              SSR — STREET SERIES
+            </div>
+          </Link>
+          <button
+            onClick={() => setMobileOpen(false)}
+            className="lg:hidden text-ink-faint"
+            aria-label="Fechar menu"
+          >
+            <X size={20} />
+          </button>
         </div>
-      </div>
 
       <nav className="px-3 py-4 space-y-1 border-b border-asphalt-border">
-        <SidebarLink href="/" icon={Flag} label="Competições" active={pathname === "/"} />
+        <SidebarLink href="/" icon={Flag} label="Competições" active={pathname === "/"} onClick={() => setMobileOpen(false)} />
         <SidebarLink
           href="/hall-dos-campeoes"
           icon={Crown}
           label="Hall dos Campeões"
           active={pathname === "/hall-dos-campeoes"}
+          onClick={() => setMobileOpen(false)}
         />
         {role === "ADMIN" && (
           <SidebarLink
@@ -56,6 +88,7 @@ export default function Sidebar({
             icon={Users}
             label="Pilotos"
             active={pathname === "/admin/pilotos" || pathname === "/admin/pilotos/novo"}
+            onClick={() => setMobileOpen(false)}
           />
         )}
       </nav>
@@ -65,7 +98,7 @@ export default function Sidebar({
           <>
             <SidebarGroupLabel label="Em andamento" />
             {ongoing.map((t) => (
-              <TournamentLink key={t.id} tournament={t} active={pathname === `/torneios/${t.slug}`} />
+              <TournamentLink key={t.id} tournament={t} active={pathname === `/torneios/${t.slug}`} onClick={() => setMobileOpen(false)} />
             ))}
           </>
         )}
@@ -74,7 +107,7 @@ export default function Sidebar({
           <>
             <SidebarGroupLabel label="Em breve" className="mt-6" />
             {upcoming.map((t) => (
-              <TournamentLink key={t.id} tournament={t} active={pathname === `/torneios/${t.slug}`} />
+              <TournamentLink key={t.id} tournament={t} active={pathname === `/torneios/${t.slug}`} onClick={() => setMobileOpen(false)} />
             ))}
           </>
         )}
@@ -83,7 +116,7 @@ export default function Sidebar({
           <>
             <SidebarGroupLabel label="Edições anteriores" className="mt-6" />
             {past.map((t) => (
-              <TournamentLink key={t.id} tournament={t} active={pathname === `/torneios/${t.slug}`} />
+              <TournamentLink key={t.id} tournament={t} active={pathname === `/torneios/${t.slug}`} onClick={() => setMobileOpen(false)} />
             ))}
           </>
         )}
@@ -95,6 +128,7 @@ export default function Sidebar({
         {role === "ADMIN" && (
           <Link
             href="/admin/torneios/novo"
+            onClick={() => setMobileOpen(false)}
             className="w-full mt-4 flex items-center gap-2 px-3 py-2.5 text-sm text-ink-muted border border-dashed border-asphalt-borderLight hover:border-ember hover:text-ember transition-colors rounded-sm"
           >
             <Plus size={14} />
@@ -130,6 +164,7 @@ export default function Sidebar({
         )}
       </div>
     </aside>
+    </>
   );
 }
 
@@ -146,15 +181,18 @@ function SidebarLink({
   icon: Icon,
   label,
   active,
+  onClick,
 }: {
   href: string;
   icon: any;
   label: string;
   active: boolean;
+  onClick?: () => void;
 }) {
   return (
     <Link
       href={href}
+      onClick={onClick}
       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-sm text-sm transition-colors ${
         active
           ? "bg-asphalt-card text-ink border-l-2 border-ember"
@@ -167,11 +205,20 @@ function SidebarLink({
   );
 }
 
-function TournamentLink({ tournament, active }: { tournament: Tournament; active: boolean }) {
+function TournamentLink({
+  tournament,
+  active,
+  onClick,
+}: {
+  tournament: Tournament;
+  active: boolean;
+  onClick?: () => void;
+}) {
   const isLive = tournament.status === "ONGOING";
   return (
     <Link
       href={`/torneios/${tournament.slug}`}
+      onClick={onClick}
       className={`block w-full text-left px-3 py-2.5 rounded-sm mb-0.5 transition-colors group ${
         active ? "bg-asphalt-card" : "hover:bg-asphalt-card/50"
       }`}
@@ -197,4 +244,4 @@ function TournamentLink({ tournament, active }: { tournament: Tournament; active
       </div>
     </Link>
   );
-        }
+}
