@@ -23,7 +23,7 @@ export default async function HomePage() {
       <Sidebar tournaments={list} role={profile?.role ?? null} loggedIn={!!userId} />
 
       <main className="flex-1 min-w-0">
-        <div className="px-6 lg:px-10 py-8 max-w-6xl mx-auto">
+        <div className="px-6 lg:px-10 pt-20 lg:pt-8 pb-8 max-w-6xl mx-auto">
           <div className="flex items-center gap-2.5 mb-6">
             <Flag size={18} className="text-ember" />
             <h1 className="font-display text-xl tracking-wide text-ink">COMPETIÇÕES</h1>
