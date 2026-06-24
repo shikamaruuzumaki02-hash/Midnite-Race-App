@@ -40,7 +40,7 @@ export default async function TournamentPage({ params }: { params: { slug: strin
 
       <main className="flex-1 min-w-0">
         <div className="border-b border-asphalt-border bg-asphalt/80 backdrop-blur-sm sticky top-0 z-20">
-          <div className="px-6 lg:px-10 py-5 max-w-6xl mx-auto flex items-center justify-between">
+          <div className="px-6 lg:px-10 py-5 pl-16 lg:pl-10 max-w-6xl mx-auto flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2.5">
                 <h1 className="font-display text-xl tracking-wide text-ink">{tournament.name}</h1>
@@ -69,7 +69,7 @@ export default async function TournamentPage({ params }: { params: { slug: strin
           </div>
         </div>
 
-        <div className="px-6 lg:px-10 py-8 max-w-6xl mx-auto space-y-10">
+        <div className="px-6 lg:px-10 pt-8 pb-8 max-w-6xl mx-auto space-y-10">
           {upcoming.length > 0 && (
             <section>
               <SectionHeader icon={Calendar} title="Próximas corridas" />
@@ -207,4 +207,4 @@ function SectionHeader({ icon: Icon, title }: { icon: any; title: string }) {
       <h2 className="font-display text-base tracking-wide text-ink">{title.toUpperCase()}</h2>
     </div>
   );
-                }
+}
