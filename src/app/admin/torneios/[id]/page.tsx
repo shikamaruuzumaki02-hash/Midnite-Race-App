@@ -5,6 +5,7 @@ import Sidebar from "@/components/Sidebar";
 import AddEntryForm from "@/components/AddEntryForm";
 import AdminEntryRow from "@/components/AdminEntryRow";
 import CrownChampionForm from "@/components/CrownChampionForm";
+import DeleteTournamentForm from "@/components/DeleteTournamentForm";
 import Link from "next/link";
 import { Settings, Users, TrendingUp, ExternalLink } from "lucide-react";
 import type { Tournament, TournamentEntry, Driver } from "@/types/database";
@@ -58,6 +59,8 @@ export default async function ManageTournamentPage({ params }: { params: { id: s
               VER PÁGINA PÚBLICA <ExternalLink size={12} />
             </Link>
           </div>
+
+          <DeleteTournamentForm tournament={tournament} />
 
           <section>
             <div className="flex items-center gap-2.5 mb-4">
