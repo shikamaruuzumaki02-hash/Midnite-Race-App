@@ -28,6 +28,7 @@ export interface Tournament {
   start_date: string | null;
   end_date: string | null;
   created_at: string;
+  bracket_generated: boolean;
 }
 
 export interface Track {
@@ -63,6 +64,7 @@ export interface Match {
   scheduled_at: string | null;
   status: MatchStatus;
   manual_override: boolean;
+  created_at: string;
   driver_a?: Driver;
   driver_b?: Driver;
   track?: Track;
