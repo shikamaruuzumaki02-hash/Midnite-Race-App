@@ -8,8 +8,10 @@ import CrownChampionForm from "@/components/CrownChampionForm";
 import DeleteTournamentForm from "@/components/DeleteTournamentForm";
 import NewMatchForm from "@/components/NewMatchForm";
 import MatchRow from "@/components/MatchRow";
+import GenerateBracketButton from "@/components/GenerateBracketButton";
+import BracketView from "@/components/BracketView";
 import Link from "next/link";
-import { Settings, Users, TrendingUp, ExternalLink, Calendar } from "lucide-react";
+import { Settings, Users, TrendingUp, ExternalLink, Calendar, Network } from "lucide-react";
 import type { Tournament, TournamentEntry, Driver, Match, Track } from "@/types/database";
 
 export const revalidate = 0;
@@ -45,12 +47,14 @@ export default async function ManageTournamentPage({ params }: { params: { id: s
     .from("matches")
     .select("*, driver_a:drivers!matches_driver_a_id_fkey(*), driver_b:drivers!matches_driver_b_id_fkey(*), track:tracks(*)")
     .eq("tournament_id", tournament.id)
-    .order("scheduled_at", { ascending: true });
+    .order("created_at", { ascending: true });
 
   const matchList = (matches ?? []) as Match[];
 
   const { data: tracks } = await supabase.from("tracks").select("*").order("name");
   const trackList = (tracks ?? []) as Track[];
+
+  const isKnockout = tournament.format === "KNOCKOUT";
 
   return (
     <div className="flex min-h-screen">
@@ -124,6 +128,23 @@ export default async function ManageTournamentPage({ params }: { params: { id: s
               </table>
             </div>
           </section>
+
+          {isKnockout && (
+            <section>
+              <div className="flex items-center gap-2.5 mb-4">
+                <Network size={17} className="text-ember" />
+                <h2 className="font-display text-base tracking-wide text-ink">CHAVE DE MATA-MATA</h2>
+              </div>
+              <div className="mb-5">
+                <GenerateBracketButton
+                  tournamentId={tournament.id}
+                  entries={entryList}
+                  bracketGenerated={!!tournament.bracket_generated}
+                />
+              </div>
+              <BracketView matches={matchList} numPlayers={entryList.length} />
+            </section>
+          )}
 
           <section>
             <div className="flex items-center gap-2.5 mb-4">
