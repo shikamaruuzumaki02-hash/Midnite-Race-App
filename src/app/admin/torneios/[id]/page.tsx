@@ -6,9 +6,11 @@ import AddEntryForm from "@/components/AddEntryForm";
 import AdminEntryRow from "@/components/AdminEntryRow";
 import CrownChampionForm from "@/components/CrownChampionForm";
 import DeleteTournamentForm from "@/components/DeleteTournamentForm";
+import NewMatchForm from "@/components/NewMatchForm";
+import MatchRow from "@/components/MatchRow";
 import Link from "next/link";
-import { Settings, Users, TrendingUp, ExternalLink } from "lucide-react";
-import type { Tournament, TournamentEntry, Driver } from "@/types/database";
+import { Settings, Users, TrendingUp, ExternalLink, Calendar } from "lucide-react";
+import type { Tournament, TournamentEntry, Driver, Match, Track } from "@/types/database";
 
 export const revalidate = 0;
 
@@ -38,6 +40,17 @@ export default async function ManageTournamentPage({ params }: { params: { id: s
   const driverList = (allDrivers ?? []) as Driver[];
   const enrolledIds = new Set(entryList.map((e) => e.driver_id));
   const availableDrivers = driverList.filter((d) => !enrolledIds.has(d.id));
+
+  const { data: matches } = await supabase
+    .from("matches")
+    .select("*, driver_a:drivers!matches_driver_a_id_fkey(*), driver_b:drivers!matches_driver_b_id_fkey(*), track:tracks(*)")
+    .eq("tournament_id", tournament.id)
+    .order("scheduled_at", { ascending: true });
+
+  const matchList = (matches ?? []) as Match[];
+
+  const { data: tracks } = await supabase.from("tracks").select("*").order("name");
+  const trackList = (tracks ?? []) as Track[];
 
   return (
     <div className="flex min-h-screen">
@@ -110,6 +123,34 @@ export default async function ManageTournamentPage({ params }: { params: { id: s
                 </tbody>
               </table>
             </div>
+          </section>
+
+          <section>
+            <div className="flex items-center gap-2.5 mb-4">
+              <Calendar size={17} className="text-ember" />
+              <h2 className="font-display text-base tracking-wide text-ink">AGENDAR CORRIDA</h2>
+            </div>
+            <NewMatchForm
+              tournamentId={tournament.id}
+              entries={entryList}
+              tracks={trackList}
+            />
+          </section>
+
+          <section>
+            <div className="flex items-center gap-2.5 mb-4">
+              <Calendar size={17} className="text-ember" />
+              <h2 className="font-display text-base tracking-wide text-ink">CORRIDAS</h2>
+            </div>
+            {matchList.length === 0 ? (
+              <p className="text-sm text-ink-faint">Nenhuma corrida agendada ainda.</p>
+            ) : (
+              <div className="grid sm:grid-cols-2 gap-3">
+                {matchList.map((m) => (
+                  <MatchRow key={m.id} match={m} format={tournament.format} />
+                ))}
+              </div>
+            )}
           </section>
 
           {entryList.length > 0 && tournament.status !== "FINISHED" && (
