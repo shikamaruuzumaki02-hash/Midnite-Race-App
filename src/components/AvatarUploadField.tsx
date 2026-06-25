@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import Cropper, { Area } from "react-easy-crop";
 import { createClient } from "@/lib/supabase/client";
-import { getCroppedImageFile, prepareImageForCrop } from "@/lib/cropImage";
+import { getCroppedImageFile, fileToDataUrl, loadImageElement } from "@/lib/cropImage";
 import { Upload, Loader2, Check, X } from "lucide-react";
 
 export default function AvatarUploadField({
@@ -47,8 +47,15 @@ export default function AvatarUploadField({
     e.target.value = "";
 
     try {
-      const readyDataUrl = await prepareImageForCrop(file);
-      setRawImageSrc(readyDataUrl);
+      // Passo 1: ler o arquivo como data: URL.
+      const dataUrl = await fileToDataUrl(file);
+
+      // Passo 2: confirmar que a imagem realmente carrega e tem conteúdo
+      // válido ANTES de abrir o crop. Só avançamos se isso for garantido,
+      // eliminando o cenário de "modal abre vazio" visto anteriormente.
+      await loadImageElement(dataUrl);
+
+      setRawImageSrc(dataUrl);
       setCrop({ x: 0, y: 0 });
       setZoom(1);
       setCroppedArea(null);
