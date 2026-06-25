@@ -1,24 +1,35 @@
+import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth";
 import Sidebar from "@/components/Sidebar";
-import ExportableLeagueTable from "@/components/ExportableLeagueTable";
-import ExportableBracket from "@/components/ExportableBracket";
+import AddEntryForm from "@/components/AddEntryForm";
+import AdminEntryRow from "@/components/AdminEntryRow";
+import CrownChampionForm from "@/components/CrownChampionForm";
+import DeleteTournamentForm from "@/components/DeleteTournamentForm";
+import NewMatchForm from "@/components/NewMatchForm";
+import MatchRow from "@/components/MatchRow";
+import GenerateBracketButton from "@/components/GenerateBracketButton";
+import BracketView from "@/components/BracketView";
 import HazardHeader from "@/components/HazardHeader";
 import HudPanel from "@/components/HudPanel";
-import { notFound } from "next/navigation";
-import { Calendar, TrendingUp, Swords, MapPin, Settings } from "lucide-react";
-import type { Tournament, TournamentEntry, Match } from "@/types/database";
+import Link from "next/link";
+import { Settings, Users, TrendingUp, ExternalLink, Calendar, Network } from "lucide-react";
+import type { Tournament, TournamentEntry, Driver, Match, Track } from "@/types/database";
 
 export const revalidate = 0;
 
-export default async function TournamentPage({ params }: { params: { slug: string } }) {
-  const supabase = createClient();
+export default async function ManageTournamentPage({ params }: { params: { id: string } }) {
   const { userId, profile } = await getCurrentProfile();
+
+  if (!userId) redirect("/login");
+  if (profile?.role !== "ADMIN") redirect("/");
+
+  const supabase = createClient();
 
   const { data: allTournaments } = await supabase.from("tournaments").select("*");
   const list = (allTournaments ?? []) as Tournament[];
 
-  const tournament = list.find((t) => t.slug === params.slug);
+  const tournament = list.find((t) => t.id === params.id);
   if (!tournament) notFound();
 
   const { data: entries } = await supabase
@@ -27,107 +38,134 @@ export default async function TournamentPage({ params }: { params: { slug: strin
     .eq("tournament_id", tournament.id)
     .order("points", { ascending: false });
 
+  const entryList = (entries ?? []) as TournamentEntry[];
+
+  const { data: allDrivers } = await supabase.from("drivers").select("*").order("gamertag");
+  const driverList = (allDrivers ?? []) as Driver[];
+  const enrolledIds = new Set(entryList.map((e) => e.driver_id));
+  const availableDrivers = driverList.filter((d) => !enrolledIds.has(d.id));
+
   const { data: matches } = await supabase
     .from("matches")
     .select("*, driver_a:drivers!matches_driver_a_id_fkey(*), driver_b:drivers!matches_driver_b_id_fkey(*), track:tracks(*)")
     .eq("tournament_id", tournament.id)
     .order("created_at", { ascending: true });
 
-  const entryList = (entries ?? []) as TournamentEntry[];
   const matchList = (matches ?? []) as Match[];
-  const upcoming = matchList.filter((m) => m.status === "SCHEDULED");
-  const isAdmin = profile?.role === "ADMIN";
+
+  const { data: tracks } = await supabase.from("tracks").select("*").order("name");
+  const trackList = (tracks ?? []) as Track[];
+
+  const isKnockout = tournament.format === "KNOCKOUT";
 
   return (
     <div className="flex min-h-screen">
       <Sidebar tournaments={list} role={profile?.role ?? null} loggedIn={!!userId} />
 
       <main className="flex-1 min-w-0">
-        <div className="border-b border-asphalt-border bg-asphalt/80 backdrop-blur-sm sticky top-0 z-20">
-          <div className="px-6 lg:px-10 py-5 pl-16 lg:pl-10 max-w-6xl mx-auto flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-2.5">
-                <h1 className="font-display text-xl tracking-wide text-ink">{tournament.name}</h1>
-                {tournament.status === "ONGOING" && (
-                  <span className="flex items-center gap-1.5 px-2 py-0.5 bg-checkpoint/10 border border-checkpoint/30 rounded-sm">
-                    <span className="w-1.5 h-1.5 rounded-full bg-checkpoint animate-pulse" />
-                    <span className="font-mono text-[10px] text-checkpoint tracking-wider">AO VIVO</span>
-                  </span>
-                )}
-              </div>
-              <div className="font-mono text-xs text-ink-faint mt-1">
-                {tournament.season && `Temporada ${tournament.season} · `}
-                {tournament.format === "KNOCKOUT" ? "Formato mata-mata" : "Pontos corridos"}
-              </div>
+        <div className="px-6 lg:px-10 pt-20 lg:pt-8 pb-8 max-w-6xl mx-auto space-y-10">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <Settings size={18} className="text-ember" />
+              <h1 className="font-display text-xl tracking-wide text-ink">
+                GERENCIAR · {tournament.name.toUpperCase()}
+              </h1>
             </div>
-
-            {isAdmin && (
-              <a
-                href={`/admin/torneios/${tournament.id}`}
-                className="flex items-center gap-2 px-4 py-2 bg-ember text-asphalt font-display text-sm tracking-wide rounded-sm hover:bg-ember-light transition-colors"
-              >
-                <Settings size={15} />
-                GERENCIAR
-              </a>
-            )}
+            <Link
+              href={`/torneios/${tournament.slug}`}
+              className="flex items-center gap-1.5 text-xs font-mono text-ink-faint hover:text-ember transition-colors"
+            >
+              VER PÁGINA PÚBLICA <ExternalLink size={12} />
+            </Link>
           </div>
-        </div>
 
-        <div className="px-6 lg:px-10 pt-8 pb-8 max-w-6xl mx-auto space-y-10">
-          {upcoming.length > 0 && (
+          <DeleteTournamentForm tournament={tournament} />
+
+          <section>
+            <HazardHeader icon={Users} title="Inscrever piloto" />
+            <AddEntryForm tournamentId={tournament.id} availableDrivers={availableDrivers} />
+            {driverList.length === 0 && (
+              <p className="text-sm text-ink-faint mt-3">
+                Nenhum piloto cadastrado na plataforma ainda.{" "}
+                <Link href="/admin/pilotos/novo" className="text-ember hover:text-ember-light">
+                  Cadastrar um piloto →
+                </Link>
+              </p>
+            )}
+          </section>
+
+          <section>
+            <HazardHeader icon={TrendingUp} title="Pilotos inscritos" />
+            <HudPanel className="bg-asphalt-panel border border-asphalt-border rounded-sm overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-asphalt-border font-mono text-[10px] text-ink-dim tracking-wider">
+                    <th className="text-left px-4 py-3 w-10">#</th>
+                    <th className="text-left px-4 py-3">PILOTO</th>
+                    <th className="text-center px-3 py-3">PTS</th>
+                    <th className="text-center px-3 py-3">V</th>
+                    <th className="text-center px-3 py-3">D</th>
+                    <th className="text-center px-3 py-3">E</th>
+                    <th className="text-right px-4 py-3">AÇÕES</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {entryList.map((entry, i) => (
+                    <AdminEntryRow key={entry.id} entry={entry} index={i} />
+                  ))}
+                  {entryList.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-8 text-center text-ink-faint text-sm">
+                        Nenhum piloto inscrito ainda.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </HudPanel>
+          </section>
+
+          {isKnockout && (
             <section>
-              <HazardHeader icon={Calendar} title="Próximas corridas" />
-              <div className="grid sm:grid-cols-2 gap-3">
-                {upcoming.map((m) => (
-                  <HudPanel
-                    key={m.id}
-                    className="bg-asphalt-panel border border-asphalt-border rounded-sm p-4 hover:border-asphalt-borderLight transition-colors"
-                  >
-                    <div className="flex items-center justify-between font-mono text-[11px] text-ember tracking-wide mb-3">
-                      <span>
-                        {m.scheduled_at
-                          ? new Date(m.scheduled_at).toLocaleString("pt-BR", {
-                              weekday: "short",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })
-                          : "A definir"}
-                      </span>
-                      <MapPin size={12} />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="font-display text-sm text-ink truncate max-w-[40%]">
-                        {m.driver_a?.gamertag}
-                      </span>
-                      <span className="font-display text-xs text-ink-dim px-2">VS</span>
-                      <span className="font-display text-sm text-ink truncate max-w-[40%]">
-                        {m.driver_b?.gamertag}
-                      </span>
-                    </div>
-                    {m.track && (
-                      <div className="mt-3 pt-3 border-t border-asphalt-border font-mono text-[11px] text-ink-faint">
-                        {m.track.name}
-                      </div>
-                    )}
-                  </HudPanel>
-                ))}
+              <HazardHeader icon={Network} title="Chave de mata-mata" />
+              <div className="mb-5">
+                <GenerateBracketButton
+                  tournamentId={tournament.id}
+                  entries={entryList}
+                  bracketGenerated={!!tournament.bracket_generated}
+                />
               </div>
+              <HudPanel className="bg-asphalt-panel border border-asphalt-border rounded-sm p-5">
+                <BracketView matches={matchList} numPlayers={entryList.length} />
+              </HudPanel>
             </section>
           )}
 
-          {tournament.format === "LEAGUE" ? (
+          <section>
+            <HazardHeader icon={Calendar} title="Agendar corrida" />
+            <NewMatchForm
+              tournamentId={tournament.id}
+              entries={entryList}
+              tracks={trackList}
+            />
+          </section>
+
+          <section>
+            <HazardHeader icon={Calendar} title="Corridas" />
+            {matchList.length === 0 ? (
+              <p className="text-sm text-ink-faint">Nenhuma corrida agendada ainda.</p>
+            ) : (
+              <div className="grid sm:grid-cols-2 gap-3">
+                {matchList.map((m) => (
+                  <MatchRow key={m.id} match={m} format={tournament.format} />
+                ))}
+              </div>
+            )}
+          </section>
+
+          {entryList.length > 0 && tournament.status !== "FINISHED" && (
             <section>
-              <HazardHeader icon={TrendingUp} title="Tabela de pontuação" />
-              <ExportableLeagueTable entries={entryList} tournamentName={tournament.name} />
-            </section>
-          ) : (
-            <section>
-              <HazardHeader icon={Swords} title="Chave de mata-mata" />
-              <ExportableBracket
-                matches={matchList}
-                numPlayers={entryList.length}
-                tournamentName={tournament.name}
-              />
+              <CrownChampionForm tournamentId={tournament.id} entries={entryList} />
             </section>
           )}
         </div>
