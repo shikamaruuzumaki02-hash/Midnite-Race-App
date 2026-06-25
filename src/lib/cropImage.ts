@@ -8,75 +8,60 @@ export type CropArea = {
 const MAX_DIMENSION = 1600;
 
 /**
- * Carrega uma imagem a partir de uma URL (incluindo blob: URLs locais).
- *
- * Tenta usar decode() para garantir que a imagem está pronta para ser
- * desenhada em canvas (importante em fotos grandes de celular), mas não
- * trata falha de decode() como erro fatal: alguns formatos (ex: WebP
- * baixado de sites como Pinterest ou ChatGPT) podem falhar no decode()
- * em certos navegadores Android mesmo estando, na prática, prontos para
- * uso. Nesses casos, a imagem é usada normalmente assim que "onload"
- * disparar.
+ * Lê um File e devolve uma data: URL (base64) com o conteúdo completo já
+ * em memória. Diferente de URL.createObjectURL, que cria uma referência
+ * "lazy" ao arquivo, FileReader força a leitura completa dos bytes antes
+ * de resolver — o que evita problemas de timing onde a imagem parece
+ * carregada mas ainda não está pronta para ser desenhada em canvas
+ * (sintoma: falha às vezes, funciona "insistindo").
+ */
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Não foi possível ler o arquivo selecionado."));
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * Carrega uma imagem a partir de uma URL (data: ou blob:) garantindo que
+ * o elemento <img> está pronto para ser desenhado em canvas.
  */
 function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();
-    let settled = false;
-
-    image.onload = async () => {
-      if ("decode" in image) {
-        try {
-          await image.decode();
-        } catch {
-          // Ignora falha de decode(): a imagem já disparou "onload",
-          // então geralmente está pronta para ser desenhada mesmo assim.
-        }
-      }
-      if (!settled) {
-        settled = true;
-        resolve(image);
-      }
-    };
-
-    image.onerror = () => {
-      if (!settled) {
-        settled = true;
-        reject(
-          new Error(
-            "Não foi possível abrir esta imagem. Tente outra foto ou salve-a novamente antes de enviar."
-          )
-        );
-      }
-    };
-
+    image.onload = () => resolve(image);
+    image.onerror = () =>
+      reject(
+        new Error(
+          "Não foi possível abrir esta imagem. Tente outra foto ou salve-a novamente antes de enviar."
+        )
+      );
     image.src = url;
   });
 }
 
 /**
- * Recebe a URL local (blob:) de uma foto recém-selecionada e, se ela for
- * maior que MAX_DIMENSION num dos lados, redimensiona para um tamanho
- * razoável antes do crop. Fotos de celular Android costumam vir em
- * resoluções muito altas (4000px+), o que pode travar ou falhar no canvas
- * durante o recorte. Devolve uma nova blob: URL já no tamanho adequado.
- *
- * Se a imagem já é pequena, devolve a mesma URL sem reprocessar.
+ * Recebe o File recém-selecionado pelo usuário e devolve uma data: URL
+ * pronta para o crop, já redimensionada caso a imagem original seja
+ * maior que MAX_DIMENSION (comum em fotos de celular Android, que podem
+ * vir em 4000px+).
  */
-export async function prepareImageForCrop(originalUrl: string): Promise<string> {
-  const image = await loadImage(originalUrl);
+export async function prepareImageForCrop(file: File): Promise<string> {
+  const dataUrl = await readFileAsDataUrl(file);
+  const image = await loadImage(dataUrl);
 
   const { naturalWidth: width, naturalHeight: height } = image;
 
   if (!width || !height) {
-    // Algumas imagens corrompidas ou em formatos não suportados pelo
-    // navegador carregam o elemento <img> mas com dimensões zeradas.
     throw new Error(
       "Esta imagem não pôde ser processada. Tente salvá-la de novo (print da tela) ou use outra foto."
     );
   }
 
   if (width <= MAX_DIMENSION && height <= MAX_DIMENSION) {
-    return originalUrl;
+    return dataUrl;
   }
 
   const scale = MAX_DIMENSION / Math.max(width, height);
@@ -92,26 +77,14 @@ export async function prepareImageForCrop(originalUrl: string): Promise<string> 
 
   ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
 
-  return new Promise((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => {
-        if (!blob) {
-          reject(new Error("Não foi possível preparar a imagem para o recorte."));
-          return;
-        }
-        resolve(URL.createObjectURL(blob));
-      },
-      "image/jpeg",
-      0.92
-    );
-  });
+  return canvas.toDataURL("image/jpeg", 0.92);
 }
 
 /**
  * Recorta uma imagem de acordo com a área de crop fornecida (em pixels reais
  * da imagem original) e devolve um File já cortado, em formato JPEG.
  *
- * @param imageSrc URL (geralmente um blob: local) da imagem original
+ * @param imageSrc data: URL (ou blob:) da imagem original
  * @param cropArea Área selecionada, em pixels da imagem original
  * @param outputFileName Nome do arquivo de saída
  */
