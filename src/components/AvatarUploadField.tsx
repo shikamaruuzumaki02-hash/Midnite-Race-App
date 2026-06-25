@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import Cropper, { Area } from "react-easy-crop";
 import { createClient } from "@/lib/supabase/client";
-import { getCroppedImageFile } from "@/lib/cropImage";
+import { getCroppedImageFile, prepareImageForCrop } from "@/lib/cropImage";
 import { Upload, Loader2, Check, X } from "lucide-react";
 
 export default function AvatarUploadField({
@@ -15,6 +15,7 @@ export default function AvatarUploadField({
 }) {
   const supabase = createClient();
   const [uploading, setUploading] = useState(false);
+  const [preparing, setPreparing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<string>(currentUrl);
 
@@ -24,7 +25,7 @@ export default function AvatarUploadField({
   const [zoom, setZoom] = useState(1);
   const [croppedArea, setCroppedArea] = useState<Area | null>(null);
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -32,22 +33,37 @@ export default function AvatarUploadField({
 
     if (!file.type.startsWith("image/")) {
       setError("Selecione um arquivo de imagem (JPG, PNG, etc.).");
+      e.target.value = "";
       return;
     }
 
-    if (file.size > 8 * 1024 * 1024) {
-      setError("A imagem deve ter no máximo 8MB.");
+    if (file.size > 15 * 1024 * 1024) {
+      setError("A imagem deve ter no máximo 15MB.");
+      e.target.value = "";
       return;
     }
 
-    const localUrl = URL.createObjectURL(file);
-    setRawImageSrc(localUrl);
-    setCrop({ x: 0, y: 0 });
-    setZoom(1);
-    setCroppedArea(null);
-
-    // Permite escolher o mesmo arquivo de novo depois, se necessário
+    setPreparing(true);
     e.target.value = "";
+
+    const originalUrl = URL.createObjectURL(file);
+
+    try {
+      const readyUrl = await prepareImageForCrop(originalUrl);
+      setRawImageSrc(readyUrl);
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
+      setCroppedArea(null);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Não foi possível abrir esta imagem. Tente outra foto."
+      );
+      URL.revokeObjectURL(originalUrl);
+    } finally {
+      setPreparing(false);
+    }
   }
 
   const onCropComplete = useCallback((_croppedAreaPercent: Area, croppedAreaPixels: Area) => {
@@ -90,7 +106,11 @@ export default function AvatarUploadField({
       setPreview(publicUrl);
       onUploaded(publicUrl);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao processar a imagem.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Erro ao processar a imagem. Tente novamente ou use outra foto."
+      );
     } finally {
       URL.revokeObjectURL(rawImageSrc);
       setRawImageSrc(null);
@@ -115,12 +135,22 @@ export default function AvatarUploadField({
         </div>
 
         <label className="flex items-center gap-2 px-3 py-2.5 bg-asphalt-card border border-asphalt-border rounded-sm text-xs font-mono text-ink-faint hover:text-ember hover:border-ember transition-colors cursor-pointer">
-          <Upload size={14} />
-          ESCOLHER FOTO
+          {preparing ? (
+            <>
+              <Loader2 size={14} className="animate-spin" />
+              PREPARANDO...
+            </>
+          ) : (
+            <>
+              <Upload size={14} />
+              ESCOLHER FOTO
+            </>
+          )}
           <input
             type="file"
             accept="image/*"
             onChange={handleFileChange}
+            disabled={preparing}
             className="hidden"
           />
         </label>
