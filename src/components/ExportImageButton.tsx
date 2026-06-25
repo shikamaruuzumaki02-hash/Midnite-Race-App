@@ -4,15 +4,53 @@ import { useState } from "react";
 import { toPng } from "html-to-image";
 import { Download, Loader2 } from "lucide-react";
 
+type StyleOverride = {
+  element: HTMLElement;
+  overflow: string;
+  width: string;
+};
+
+/**
+ * Remove temporariamente o overflow/scroll horizontal de um elemento e de
+ * todos os seus elementos-pai relevantes, forçando-os a expandir para o
+ * tamanho total do conteúdo. Necessário porque html-to-image captura o
+ * DOM como ele está renderizado: se um contêiner tem overflow-x-auto
+ * (como o bracket de mata-mata, com rodadas lado a lado), apenas a parte
+ * visível na tela seria capturada, cortando o restante.
+ *
+ * Devolve uma função de limpeza que restaura os estilos originais.
+ */
+function expandScrollableAncestors(node: HTMLElement): () => void {
+  const overrides: StyleOverride[] = [];
+
+  // Expande o próprio elemento alvo e qualquer descendente com scroll
+  // horizontal (ex: a div com overflow-x-auto dentro do BracketView).
+  const candidates = [node, ...Array.from(node.querySelectorAll<HTMLElement>("*"))];
+
+  for (const el of candidates) {
+    const style = window.getComputedStyle(el);
+    const hasHorizontalScroll = el.scrollWidth > el.clientWidth;
+    const isScrollable =
+      style.overflowX === "auto" || style.overflowX === "scroll" || hasHorizontalScroll;
+
+    if (isScrollable) {
+      overrides.push({ element: el, overflow: el.style.overflow, width: el.style.width });
+      el.style.overflow = "visible";
+      el.style.width = `${el.scrollWidth}px`;
+    }
+  }
+
+  return () => {
+    for (const { element, overflow, width } of overrides) {
+      element.style.overflow = overflow;
+      element.style.width = width;
+    }
+  };
+}
+
 /**
  * Botão reutilizável que captura o conteúdo de um elemento (passado via
  * targetRef) como imagem PNG e dispara o download no celular.
- *
- * Importante: quando o elemento tem scroll horizontal (como o bracket de
- * mata-mata, com rodadas lado a lado), a captura usa a largura/altura
- * total do conteúdo (scrollWidth/scrollHeight), não apenas a área
- * visível na tela — senão a imagem sairia cortada nas rodadas que estão
- * fora da tela no momento da exportação.
  *
  * Uso:
  *   const ref = useRef<HTMLDivElement>(null);
@@ -38,16 +76,16 @@ export default function ExportImageButton({
     setLoading(true);
     setError(null);
 
+    const restore = expandScrollableAncestors(node);
+
     try {
+      // Pequena espera para o navegador recalcular o layout após a
+      // mudança de estilo, antes de capturar.
+      await new Promise((r) => setTimeout(r, 50));
+
       const dataUrl = await toPng(node, {
         backgroundColor: "#0a0a0c",
         pixelRatio: 2,
-        width: node.scrollWidth,
-        height: node.scrollHeight,
-        style: {
-          width: `${node.scrollWidth}px`,
-          height: `${node.scrollHeight}px`,
-        },
       });
 
       const link = document.createElement("a");
@@ -61,6 +99,7 @@ export default function ExportImageButton({
           : "Erro ao gerar a imagem."
       );
     } finally {
+      restore();
       setLoading(false);
     }
   }
