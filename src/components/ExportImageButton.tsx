@@ -8,6 +8,12 @@ import { Download, Loader2 } from "lucide-react";
  * Botão reutilizável que captura o conteúdo de um elemento (passado via
  * targetRef) como imagem PNG e dispara o download no celular.
  *
+ * Importante: quando o elemento tem scroll horizontal (como o bracket de
+ * mata-mata, com rodadas lado a lado), a captura usa a largura/altura
+ * total do conteúdo (scrollWidth/scrollHeight), não apenas a área
+ * visível na tela — senão a imagem sairia cortada nas rodadas que estão
+ * fora da tela no momento da exportação.
+ *
  * Uso:
  *   const ref = useRef<HTMLDivElement>(null);
  *   <div ref={ref}>...conteúdo a exportar...</div>
@@ -26,15 +32,22 @@ export default function ExportImageButton({
   const [error, setError] = useState<string | null>(null);
 
   async function handleExport() {
-    if (!targetRef.current) return;
+    const node = targetRef.current;
+    if (!node) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      const dataUrl = await toPng(targetRef.current, {
+      const dataUrl = await toPng(node, {
         backgroundColor: "#0a0a0c",
         pixelRatio: 2,
+        width: node.scrollWidth,
+        height: node.scrollHeight,
+        style: {
+          width: `${node.scrollWidth}px`,
+          height: `${node.scrollHeight}px`,
+        },
       });
 
       const link = document.createElement("a");
