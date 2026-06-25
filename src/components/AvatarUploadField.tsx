@@ -46,11 +46,9 @@ export default function AvatarUploadField({
     setPreparing(true);
     e.target.value = "";
 
-    const originalUrl = URL.createObjectURL(file);
-
     try {
-      const readyUrl = await prepareImageForCrop(originalUrl);
-      setRawImageSrc(readyUrl);
+      const readyDataUrl = await prepareImageForCrop(file);
+      setRawImageSrc(readyDataUrl);
       setCrop({ x: 0, y: 0 });
       setZoom(1);
       setCroppedArea(null);
@@ -60,7 +58,6 @@ export default function AvatarUploadField({
           ? err.message
           : "Não foi possível abrir esta imagem. Tente outra foto."
       );
-      URL.revokeObjectURL(originalUrl);
     } finally {
       setPreparing(false);
     }
@@ -71,7 +68,6 @@ export default function AvatarUploadField({
   }, []);
 
   function cancelCrop() {
-    if (rawImageSrc) URL.revokeObjectURL(rawImageSrc);
     setRawImageSrc(null);
   }
 
@@ -105,6 +101,7 @@ export default function AvatarUploadField({
 
       setPreview(publicUrl);
       onUploaded(publicUrl);
+      setRawImageSrc(null);
     } catch (err) {
       setError(
         err instanceof Error
@@ -112,8 +109,6 @@ export default function AvatarUploadField({
           : "Erro ao processar a imagem. Tente novamente ou use outra foto."
       );
     } finally {
-      URL.revokeObjectURL(rawImageSrc);
-      setRawImageSrc(null);
       setUploading(false);
     }
   }
