@@ -2,8 +2,9 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth";
 import Sidebar from "@/components/Sidebar";
+import DeleteDriverButton from "@/components/DeleteDriverButton";
 import Link from "next/link";
-import { Users, Plus } from "lucide-react";
+import { Users, Plus, Pencil } from "lucide-react";
 import type { Tournament, Driver } from "@/types/database";
 
 export const revalidate = 0;
@@ -64,11 +65,21 @@ export default async function DriversPage() {
                       d.gamertag.charAt(0).toUpperCase()
                     )}
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="font-display text-sm text-ink truncate">{d.gamertag}</div>
                     {d.real_name && (
                       <div className="font-mono text-[11px] text-ink-faint truncate">{d.real_name}</div>
                     )}
+                    <div className="flex items-center gap-3 mt-2">
+                      <Link
+                        href={`/admin/pilotos/${d.id}/editar`}
+                        className="flex items-center gap-1 text-xs font-mono text-ink-faint hover:text-ember transition-colors"
+                      >
+                        <Pencil size={12} />
+                        EDITAR
+                      </Link>
+                      <DeleteDriverButton driverId={d.id} gamertag={d.gamertag} />
+                    </div>
                   </div>
                 </div>
               ))}
