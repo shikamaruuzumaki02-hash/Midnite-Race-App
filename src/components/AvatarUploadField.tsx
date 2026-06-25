@@ -19,7 +19,6 @@ export default function AvatarUploadField({
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<string>(currentUrl);
 
-  // Estado do modal de crop
   const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -47,12 +46,7 @@ export default function AvatarUploadField({
     e.target.value = "";
 
     try {
-      // Passo 1: ler o arquivo como data: URL.
       const dataUrl = await fileToDataUrl(file);
-
-      // Passo 2: confirmar que a imagem realmente carrega e tem conteúdo
-      // válido ANTES de abrir o crop. Só avançamos se isso for garantido,
-      // eliminando o cenário de "modal abre vazio" visto anteriormente.
       await loadImageElement(dataUrl);
 
       setRawImageSrc(dataUrl);
