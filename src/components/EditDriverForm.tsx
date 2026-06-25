@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import AvatarUploadField from "@/components/AvatarUploadField";
 import type { Driver } from "@/types/database";
 
 export default function EditDriverForm({ driver }: { driver: Driver }) {
@@ -66,18 +67,7 @@ export default function EditDriverForm({ driver }: { driver: Driver }) {
         />
       </div>
 
-      <div>
-        <label className="block font-mono text-[11px] text-ink-faint mb-1.5 tracking-wide">
-          URL DA FOTO (OPCIONAL)
-        </label>
-        <input
-          type="url"
-          value={avatarUrl}
-          onChange={(e) => setAvatarUrl(e.target.value)}
-          placeholder="https://..."
-          className="w-full bg-asphalt-card border border-asphalt-border rounded-sm px-3 py-2.5 text-sm text-ink focus:outline-none focus:border-ember transition-colors"
-        />
-      </div>
+      <AvatarUploadField currentUrl={avatarUrl} onUploaded={setAvatarUrl} />
 
       {error && <p className="text-danger text-xs font-mono">{error}</p>}
 
