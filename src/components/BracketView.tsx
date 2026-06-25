@@ -3,16 +3,22 @@ import { getRoundSequence } from "@/lib/bracket";
 import type { Match } from "@/types/database";
 
 /**
- * Visualização do bracket de mata-mata: rodadas lado a lado, com scroll
- * horizontal (pensado para celular). Agrupa as partidas por rodada na
- * ordem certa (Oitavas -> Quartas -> Semifinal -> Final, por exemplo).
+ * Visualização do bracket de mata-mata: rodadas lado a lado.
+ *
+ * Por padrão tem scroll horizontal (pensado para celular). Quando usado
+ * dentro de uma exportação de imagem (ExportableBracket), a prop
+ * `scrollable={false}` desativa o scroll e deixa o conteúdo na largura
+ * total, para que a captura inclua todas as rodadas — mesmo as que
+ * estariam fora da tela visível.
  */
 export default function BracketView({
   matches,
   numPlayers,
+  scrollable = true,
 }: {
   matches: Match[];
   numPlayers: number;
+  scrollable?: boolean;
 }) {
   let roundOrder: string[];
   try {
@@ -41,8 +47,10 @@ export default function BracketView({
   }
 
   return (
-    <div className="overflow-x-auto pb-2 -mx-1">
-      <div className="flex gap-4 px-1 min-w-max">
+    <div className={scrollable ? "overflow-x-auto pb-2 -mx-1" : "overflow-visible pb-2 -mx-1"}>
+      <div
+        className={`flex gap-4 px-1 ${scrollable ? "min-w-max" : "w-max"}`}
+      >
         {roundOrder.map((roundName) => {
           const roundMatches = matchesByRound.get(roundName) ?? [];
           if (roundMatches.length === 0) return null;
