@@ -3,6 +3,8 @@ import { getCurrentProfile } from "@/lib/auth";
 import Sidebar from "@/components/Sidebar";
 import ExportableLeagueTable from "@/components/ExportableLeagueTable";
 import ExportableBracket from "@/components/ExportableBracket";
+import HazardHeader from "@/components/HazardHeader";
+import HudPanel from "@/components/HudPanel";
 import { notFound } from "next/navigation";
 import { Calendar, TrendingUp, Swords, MapPin, Settings } from "lucide-react";
 import type { Tournament, TournamentEntry, Match } from "@/types/database";
@@ -74,10 +76,10 @@ export default async function TournamentPage({ params }: { params: { slug: strin
         <div className="px-6 lg:px-10 pt-8 pb-8 max-w-6xl mx-auto space-y-10">
           {upcoming.length > 0 && (
             <section>
-              <SectionHeader icon={Calendar} title="Próximas corridas" />
+              <HazardHeader icon={Calendar} title="Próximas corridas" />
               <div className="grid sm:grid-cols-2 gap-3">
                 {upcoming.map((m) => (
-                  <div
+                  <HudPanel
                     key={m.id}
                     className="bg-asphalt-panel border border-asphalt-border rounded-sm p-4 hover:border-asphalt-borderLight transition-colors"
                   >
@@ -107,7 +109,7 @@ export default async function TournamentPage({ params }: { params: { slug: strin
                         {m.track.name}
                       </div>
                     )}
-                  </div>
+                  </HudPanel>
                 ))}
               </div>
             </section>
@@ -115,12 +117,12 @@ export default async function TournamentPage({ params }: { params: { slug: strin
 
           {tournament.format === "LEAGUE" ? (
             <section>
-              <SectionHeader icon={TrendingUp} title="Tabela de pontuação" />
+              <HazardHeader icon={TrendingUp} title="Tabela de pontuação" />
               <ExportableLeagueTable entries={entryList} tournamentName={tournament.name} />
             </section>
           ) : (
             <section>
-              <SectionHeader icon={Swords} title="Chave de mata-mata" />
+              <HazardHeader icon={Swords} title="Chave de mata-mata" />
               <ExportableBracket
                 matches={matchList}
                 numPlayers={entryList.length}
@@ -130,15 +132,6 @@ export default async function TournamentPage({ params }: { params: { slug: strin
           )}
         </div>
       </main>
-    </div>
-  );
-}
-
-function SectionHeader({ icon: Icon, title }: { icon: any; title: string }) {
-  return (
-    <div className="flex items-center gap-2.5 mb-4">
-      <Icon size={17} className="text-ember" />
-      <h2 className="font-display text-base tracking-wide text-ink">{title.toUpperCase()}</h2>
     </div>
   );
 }
