@@ -8,25 +8,47 @@ export type CropArea = {
 const MAX_DIMENSION = 1600;
 
 /**
- * Carrega uma imagem a partir de uma URL (incluindo blob: URLs locais),
- * garantindo que ela esteja totalmente decodificada antes de resolver.
- * Isso evita falhas em fotos grandes de celular, onde o evento "onload"
- * pode disparar antes da imagem estar realmente pronta para ser desenhada.
+ * Carrega uma imagem a partir de uma URL (incluindo blob: URLs locais).
+ *
+ * Tenta usar decode() para garantir que a imagem está pronta para ser
+ * desenhada em canvas (importante em fotos grandes de celular), mas não
+ * trata falha de decode() como erro fatal: alguns formatos (ex: WebP
+ * baixado de sites como Pinterest ou ChatGPT) podem falhar no decode()
+ * em certos navegadores Android mesmo estando, na prática, prontos para
+ * uso. Nesses casos, a imagem é usada normalmente assim que "onload"
+ * disparar.
  */
 function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();
+    let settled = false;
+
     image.onload = async () => {
-      try {
-        if ("decode" in image) {
+      if ("decode" in image) {
+        try {
           await image.decode();
+        } catch {
+          // Ignora falha de decode(): a imagem já disparou "onload",
+          // então geralmente está pronta para ser desenhada mesmo assim.
         }
-        resolve(image);
-      } catch {
+      }
+      if (!settled) {
+        settled = true;
         resolve(image);
       }
     };
-    image.onerror = () => reject(new Error("Não foi possível ler esta imagem."));
+
+    image.onerror = () => {
+      if (!settled) {
+        settled = true;
+        reject(
+          new Error(
+            "Não foi possível abrir esta imagem. Tente outra foto ou salve-a novamente antes de enviar."
+          )
+        );
+      }
+    };
+
     image.src = url;
   });
 }
@@ -37,11 +59,21 @@ function loadImage(url: string): Promise<HTMLImageElement> {
  * razoável antes do crop. Fotos de celular Android costumam vir em
  * resoluções muito altas (4000px+), o que pode travar ou falhar no canvas
  * durante o recorte. Devolve uma nova blob: URL já no tamanho adequado.
+ *
+ * Se a imagem já é pequena, devolve a mesma URL sem reprocessar.
  */
 export async function prepareImageForCrop(originalUrl: string): Promise<string> {
   const image = await loadImage(originalUrl);
 
   const { naturalWidth: width, naturalHeight: height } = image;
+
+  if (!width || !height) {
+    // Algumas imagens corrompidas ou em formatos não suportados pelo
+    // navegador carregam o elemento <img> mas com dimensões zeradas.
+    throw new Error(
+      "Esta imagem não pôde ser processada. Tente salvá-la de novo (print da tela) ou use outra foto."
+    );
+  }
 
   if (width <= MAX_DIMENSION && height <= MAX_DIMENSION) {
     return originalUrl;
