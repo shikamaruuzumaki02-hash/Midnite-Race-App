@@ -1,13 +1,15 @@
 import { Flag } from "lucide-react";
+import HudPanel from "@/components/HudPanel";
 
 /**
  * Cabeçalho da página inicial. Usa uma textura sutil em CSS puro
  * (linhas diagonais finas, lembrando o piso de uma garagem ou pista
- * vista de cima) para dar atmosfera sem depender de imagens externas.
+ * vista de cima) e cantos de mira estilo HUD de jogo de corrida, para
+ * dar atmosfera sem depender de imagens externas.
  */
 export default function HomeHero() {
   return (
-    <div className="relative overflow-hidden rounded-sm border border-asphalt-border mb-8">
+    <HudPanel className="overflow-hidden rounded-sm border border-asphalt-border mb-8">
       {/* Textura de fundo: linhas diagonais finas, estilo piso de garagem */}
       <div
         className="absolute inset-0 opacity-[0.04]"
@@ -41,6 +43,6 @@ export default function HomeHero() {
           Ligas e chaves de mata-mata da cena de street racing.
         </p>
       </div>
-    </div>
+    </HudPanel>
   );
 }
