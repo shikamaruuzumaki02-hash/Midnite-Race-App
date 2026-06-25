@@ -1,3 +1,5 @@
+import type { LucideIcon } from "lucide-react";
+
 /**
  * Cabeçalho de seção com faixa diagonal preto/âmbar, inspirado nas
  * faixas de "atenção" usadas nos painéis de Need for Speed Most Wanted
@@ -8,7 +10,7 @@ export default function HazardHeader({
   icon: Icon,
   title,
 }: {
-  icon?: React.ComponentType<{ size?: number; className?: string }>;
+  icon?: LucideIcon;
   title: string;
 }) {
   return (
