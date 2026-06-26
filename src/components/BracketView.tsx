@@ -1,5 +1,6 @@
 import { Trophy } from "lucide-react";
 import { getRoundSequence } from "@/lib/bracket";
+import DriverAvatar from "@/components/DriverAvatar";
 import type { Match } from "@/types/database";
 
 /**
@@ -80,26 +81,37 @@ function BracketMatchCard({ match }: { match: Match }) {
     <div className="bg-asphalt-panel border border-asphalt-border rounded-sm p-3">
       <PlayerLine
         name={match.driver_a?.gamertag ?? "A definir"}
+        avatarUrl={match.driver_a?.avatar_url}
         isWinner={isCompleted && match.winner_id === match.driver_a_id}
       />
       <div className="h-px bg-asphalt-border my-1.5" />
       <PlayerLine
         name={match.driver_b?.gamertag ?? "A definir"}
+        avatarUrl={match.driver_b?.avatar_url}
         isWinner={isCompleted && match.winner_id === match.driver_b_id}
       />
     </div>
   );
 }
 
-function PlayerLine({ name, isWinner }: { name: string; isWinner: boolean }) {
+function PlayerLine({
+  name,
+  avatarUrl,
+  isWinner,
+}: {
+  name: string;
+  avatarUrl?: string | null;
+  isWinner: boolean;
+}) {
   return (
     <div
-      className={`flex items-center gap-1.5 text-sm truncate ${
+      className={`flex items-center gap-2 text-sm truncate ${
         isWinner ? "text-checkpoint font-medium" : "text-ink-faint"
       }`}
     >
+      <DriverAvatar gamertag={name} avatarUrl={avatarUrl} size="lg" />
+      <span className="truncate flex-1">{name}</span>
       {isWinner && <Trophy size={12} className="shrink-0" />}
-      <span className="truncate">{name}</span>
     </div>
   );
 }
