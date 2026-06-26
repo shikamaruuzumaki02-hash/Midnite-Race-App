@@ -1,4 +1,4 @@
-import { Trophy } from "lucide-react";
+import { Trophy, Crown } from "lucide-react";
 import { getRoundSequence } from "@/lib/bracket";
 import DriverAvatar from "@/components/DriverAvatar";
 import type { Match } from "@/types/database";
@@ -11,6 +11,10 @@ import type { Match } from "@/types/database";
  * `scrollable={false}` desativa o scroll e deixa o conteúdo na largura
  * total, para que a captura inclua todas as rodadas — mesmo as que
  * estariam fora da tela visível.
+ *
+ * Quando a Final já tem vencedor definido, uma coluna extra "Campeão" é
+ * exibida ao final, mostrando apenas o piloto campeão. Essa coluna é
+ * puramente visual — não corresponde a nenhuma partida real no banco.
  */
 export default function BracketView({
   matches,
@@ -47,6 +51,16 @@ export default function BracketView({
     );
   }
 
+  const finalRoundName = roundOrder[roundOrder.length - 1];
+  const finalMatches = matchesByRound.get(finalRoundName) ?? [];
+  const finalMatch = finalMatches[0];
+  const champion =
+    finalMatch?.status === "COMPLETED" && finalMatch.winner_id
+      ? finalMatch.winner_id === finalMatch.driver_a_id
+        ? finalMatch.driver_a
+        : finalMatch.driver_b
+      : null;
+
   return (
     <div className={scrollable ? "overflow-x-auto pb-2 -mx-1" : "overflow-visible pb-2 -mx-1"}>
       <div
@@ -69,6 +83,27 @@ export default function BracketView({
             </div>
           );
         })}
+
+        {champion && (
+          <div className="flex flex-col gap-3 w-56 shrink-0">
+            <h3 className="font-display text-xs tracking-wider text-checkpoint text-center">
+              CAMPEÃO
+            </h3>
+            <div className="flex flex-col justify-center flex-1">
+              <div className="bg-asphalt-panel border border-checkpoint/40 rounded-sm p-4 flex flex-col items-center gap-3 text-center">
+                <Crown size={20} className="text-checkpoint" />
+                <DriverAvatar
+                  gamertag={champion.gamertag}
+                  avatarUrl={champion.avatar_url}
+                  size="lg"
+                />
+                <span className="font-display text-lg font-semibold text-checkpoint leading-tight">
+                  {champion.gamertag}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
