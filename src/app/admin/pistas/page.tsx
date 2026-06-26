@@ -3,7 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth";
 import Sidebar from "@/components/Sidebar";
 import NewTrackForm from "@/components/NewTrackForm";
-import { MapPin } from "lucide-react";
+import HazardHeader from "@/components/HazardHeader";
+import HudPanel from "@/components/HudPanel";
+import { MapPin, ListChecks } from "lucide-react";
 import type { Tournament, Track } from "@/types/database";
 
 export const revalidate = 0;
@@ -27,24 +29,23 @@ export default async function TracksPage() {
 
       <main className="flex-1 min-w-0">
         <div className="px-6 lg:px-10 pt-20 lg:pt-8 pb-8 max-w-6xl mx-auto space-y-10">
-          <div className="flex items-center gap-2.5">
-            <MapPin size={18} className="text-ember" />
-            <h1 className="font-display text-xl tracking-wide text-ink">PISTAS</h1>
-          </div>
+          <HazardHeader icon={MapPin} title="Pistas" />
 
           <section>
-            <h2 className="font-display text-base tracking-wide text-ink mb-4">NOVA PISTA</h2>
-            <NewTrackForm />
+            <HazardHeader icon={MapPin} title="Nova pista" />
+            <div className="mt-4">
+              <NewTrackForm />
+            </div>
           </section>
 
           <section>
-            <h2 className="font-display text-base tracking-wide text-ink mb-4">CADASTRADAS</h2>
+            <HazardHeader icon={ListChecks} title="Cadastradas" />
             {trackList.length === 0 ? (
-              <p className="text-sm text-ink-faint">Nenhuma pista cadastrada ainda.</p>
+              <p className="text-sm text-ink-faint mt-4">Nenhuma pista cadastrada ainda.</p>
             ) : (
-              <div className="grid sm:grid-cols-2 gap-3">
+              <div className="grid sm:grid-cols-2 gap-3 mt-4">
                 {trackList.map((t) => (
-                  <div
+                  <HudPanel
                     key={t.id}
                     className="bg-asphalt-panel border border-asphalt-border rounded-sm p-4"
                   >
@@ -55,7 +56,7 @@ export default async function TracksPage() {
                     {t.description && (
                       <div className="text-xs text-ink-muted mt-2">{t.description}</div>
                     )}
-                  </div>
+                  </HudPanel>
                 ))}
               </div>
             )}
