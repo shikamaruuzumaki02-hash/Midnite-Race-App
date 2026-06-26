@@ -3,6 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth";
 import Sidebar from "@/components/Sidebar";
 import DeleteDriverButton from "@/components/DeleteDriverButton";
+import DriverAvatar from "@/components/DriverAvatar";
+import HazardHeader from "@/components/HazardHeader";
+import HudPanel from "@/components/HudPanel";
 import Link from "next/link";
 import { Users, Plus, Pencil } from "lucide-react";
 import type { Tournament, Driver } from "@/types/database";
@@ -32,17 +35,14 @@ export default async function DriversPage() {
 
       <main className="flex-1 min-w-0">
         <div className="px-6 lg:px-10 pt-20 lg:pt-8 pb-8 max-w-6xl mx-auto">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-2.5">
-              <Users size={18} className="text-ember" />
-              <h1 className="font-display text-xl tracking-wide text-ink">PILOTOS</h1>
-            </div>
+          <div className="flex items-center justify-between gap-3 mb-6">
+            <HazardHeader icon={Users} title="Pilotos" />
             <Link
               href="/admin/pilotos/novo"
-              className="flex items-center gap-2 px-4 py-2 bg-ember text-asphalt font-display text-sm tracking-wide rounded-sm hover:bg-ember-light transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-ember text-asphalt font-display text-sm tracking-wide rounded-sm hover:bg-ember-light transition-colors shrink-0"
             >
               <Plus size={15} />
-              NOVO PILOTO
+              NOVO
             </Link>
           </div>
 
@@ -53,18 +53,11 @@ export default async function DriversPage() {
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {driverList.map((d) => (
-                <div
+                <HudPanel
                   key={d.id}
                   className="bg-asphalt-panel border border-asphalt-border rounded-sm p-4 flex items-center gap-3"
                 >
-                  <div className="w-10 h-10 rounded-sm bg-asphalt-card border border-asphalt-border flex items-center justify-center shrink-0 font-display text-sm text-ink-muted overflow-hidden">
-                    {d.avatar_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={d.avatar_url} alt={d.gamertag} className="w-full h-full object-cover" />
-                    ) : (
-                      d.gamertag.charAt(0).toUpperCase()
-                    )}
-                  </div>
+                  <DriverAvatar gamertag={d.gamertag} avatarUrl={d.avatar_url} size="md" />
                   <div className="min-w-0 flex-1">
                     <div className="font-display text-sm text-ink truncate">{d.gamertag}</div>
                     {d.real_name && (
@@ -81,7 +74,7 @@ export default async function DriversPage() {
                       <DeleteDriverButton driverId={d.id} gamertag={d.gamertag} />
                     </div>
                   </div>
-                </div>
+                </HudPanel>
               ))}
             </div>
           )}
