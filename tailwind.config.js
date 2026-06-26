@@ -25,9 +25,10 @@ module.exports = {
         },
       },
       fontFamily: {
-        display: ["Oswald", "sans-serif"],
+        display: ["Oxanium", "sans-serif"],
         body: ["Inter", "sans-serif"],
-        mono: ["JetBrains Mono", "monospace"],
+        mono: ["Rajdhani", "sans-serif"],
+        blackletter: ["UnifrakturCook", "serif"],
       },
     },
   },
