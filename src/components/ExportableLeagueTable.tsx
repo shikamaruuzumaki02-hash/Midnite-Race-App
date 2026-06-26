@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import HudPanel from "@/components/HudPanel";
 import ExportImageButton from "@/components/ExportImageButton";
+import DriverAvatar from "@/components/DriverAvatar";
 import type { TournamentEntry } from "@/types/database";
 
 export default function ExportableLeagueTable({
@@ -41,10 +42,19 @@ export default function ExportableLeagueTable({
                   className="border-b border-asphalt-border/60 last:border-0"
                 >
                   <td className="px-4 py-3 font-mono text-ink-faint">{i + 1}</td>
-                  <td className="px-4 py-3 font-display text-sm text-ink truncate max-w-[160px]">
-                    {entry.driver?.gamertag}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2.5 max-w-[180px]">
+                      <DriverAvatar
+                        gamertag={entry.driver?.gamertag ?? "?"}
+                        avatarUrl={entry.driver?.avatar_url}
+                        size="sm"
+                      />
+                      <span className="font-display text-sm text-ink truncate">
+                        {entry.driver?.gamertag}
+                      </span>
+                    </div>
                     {entry.disqualified && (
-                      <span className="ml-2 text-[10px] font-mono text-danger">DESCLASSIFICADO</span>
+                      <span className="ml-9 text-[10px] font-mono text-danger">DESCLASSIFICADO</span>
                     )}
                   </td>
                   <td className="px-3 py-3 text-center font-mono font-semibold text-ink">
