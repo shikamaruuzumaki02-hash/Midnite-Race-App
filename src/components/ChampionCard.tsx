@@ -21,11 +21,11 @@ export default function ChampionCard({ champion }: { champion: Champion }) {
 
   return (
     <div className="space-y-3 flex flex-col items-center">
-      <div className="w-full max-w-[280px]">
-        <div ref={ref} className="inline-block w-[280px]">
+      <div ref={ref} className="inline-block p-1">
+        <div className="w-[272px]">
           <HudPanel
             cornerColor="border-ember"
-            className="bg-asphalt-panel border-2 border-ember/40 rounded-md overflow-hidden"
+            className="bg-asphalt-panel border-2 border-ember/40 rounded-md overflow-hidden box-content"
           >
             {/* Faixa diagonal no topo, reaproveitando o padrão do HazardHeader */}
             <div
