@@ -57,7 +57,7 @@ export default function BracketView({
           if (roundMatches.length === 0) return null;
 
           return (
-            <div key={roundName} className="flex flex-col gap-3 w-64 shrink-0">
+            <div key={roundName} className="flex flex-col gap-3 w-56 shrink-0">
               <h3 className="font-display text-xs tracking-wider text-ember text-center">
                 {roundName.toUpperCase()}
               </h3>
@@ -84,7 +84,7 @@ function BracketMatchCard({ match }: { match: Match }) {
         avatarUrl={match.driver_a?.avatar_url}
         isWinner={isCompleted && match.winner_id === match.driver_a_id}
       />
-      <div className="h-px bg-asphalt-border my-1.5" />
+      <div className="h-px bg-asphalt-border my-2" />
       <PlayerLine
         name={match.driver_b?.gamertag ?? "A definir"}
         avatarUrl={match.driver_b?.avatar_url}
@@ -105,13 +105,15 @@ function PlayerLine({
 }) {
   return (
     <div
-      className={`flex items-center gap-2 text-sm truncate ${
-        isWinner ? "text-checkpoint font-medium" : "text-ink-faint"
+      className={`flex items-center gap-2.5 ${
+        isWinner ? "text-checkpoint" : "text-ink-faint"
       }`}
     >
       <DriverAvatar gamertag={name} avatarUrl={avatarUrl} size="lg" />
-      <span className="truncate flex-1">{name}</span>
-      {isWinner && <Trophy size={12} className="shrink-0" />}
+      <span className="font-display text-lg font-semibold truncate flex-1 leading-tight">
+        {name}
+      </span>
+      {isWinner && <Trophy size={16} className="shrink-0" />}
     </div>
   );
 }
