@@ -1,11 +1,14 @@
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { getCurrentProfile } from '@/lib/auth';
 import { getCarModelById, getGaragesByModel, getUserGarageForModel } from '@/lib/garage';
+import Sidebar from '@/components/Sidebar';
 import GarageCard from '@/components/garage/GarageCard';
 import GaragePhotoUpload from '@/components/garage/GaragePhotoUpload';
 import CreateGarageButton from '@/components/garage/CreateGarageButton';
 import HazardHeader from '@/components/HazardHeader';
 import { Car } from 'lucide-react';
+import type { Tournament } from '@/types/database';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +23,15 @@ export default async function ModeloGaragemPage({ params }: PageProps) {
   if (!model) notFound();
 
   const supabase = createClient();
+  const { userId, profile } = await getCurrentProfile();
+
+  const { data: tournaments } = await supabase
+    .from('tournaments')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  const list = (tournaments ?? []) as Tournament[];
+
   const { data: userData } = await supabase.auth.getUser();
   const user = userData?.user;
 
@@ -29,46 +41,52 @@ export default async function ModeloGaragemPage({ params }: PageProps) {
   const otherGarages = allGarages.filter((g) => g.id !== userGarage?.id);
 
   return (
-    <div className="px-4 pt-20 lg:px-8 lg:pt-8">
-      <HazardHeader icon={Car} title={model.name} />
+    <div className="flex min-h-screen">
+      <Sidebar tournaments={list} role={profile?.role ?? null} loggedIn={!!userId} />
 
-      {user && (
-        <div className="my-6">
-          <h2 className="mb-3 font-display text-lg uppercase tracking-wide text-ink">
-            Sua garagem
-          </h2>
+      <main className="flex-1 min-w-0">
+        <div className="px-6 lg:px-10 pt-20 lg:pt-8 pb-8 max-w-6xl mx-auto">
+          <HazardHeader icon={Car} title={model.name} />
 
-          {userGarage ? (
-            <div className="rounded-lg border border-asphalt-border bg-asphalt-card p-3">
-              <GaragePhotoUpload
-                garageId={userGarage.id}
-                userId={user.id}
-                initialPhotos={userGarage.garage_photos}
-              />
+          {user && (
+            <div className="my-6">
+              <h2 className="mb-3 font-display text-lg uppercase tracking-wide text-ink">
+                Sua garagem
+              </h2>
+
+              {userGarage ? (
+                <div className="rounded-lg border border-asphalt-border bg-asphalt-card p-3">
+                  <GaragePhotoUpload
+                    garageId={userGarage.id}
+                    userId={user.id}
+                    initialPhotos={userGarage.garage_photos}
+                  />
+                </div>
+              ) : (
+                <CreateGarageButton userId={user.id} modelId={modelId} />
+              )}
             </div>
-          ) : (
-            <CreateGarageButton userId={user.id} modelId={modelId} />
           )}
-        </div>
-      )}
 
-      <div className="mt-8">
-        <h2 className="mb-3 font-display text-lg uppercase tracking-wide text-ink">
-          Garagens dos pilotos
-        </h2>
+          <div className="mt-8">
+            <h2 className="mb-3 font-display text-lg uppercase tracking-wide text-ink">
+              Garagens dos pilotos
+            </h2>
 
-        {otherGarages.length === 0 ? (
-          <p className="font-mono text-sm text-ink-faint">
-            Nenhuma garagem ainda pra este modelo.
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {otherGarages.map((garage) => (
-              <GarageCard key={garage.id} garage={garage} />
-            ))}
+            {otherGarages.length === 0 ? (
+              <p className="font-mono text-sm text-ink-faint">
+                Nenhuma garagem ainda pra este modelo.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {otherGarages.map((garage) => (
+                  <GarageCard key={garage.id} garage={garage} />
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      </main>
     </div>
   );
 }
