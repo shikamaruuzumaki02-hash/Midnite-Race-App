@@ -47,13 +47,11 @@ export function loadImageElement(src: string): Promise<HTMLImageElement> {
 }
 
 /**
- * Converte um File em uma data: URL (base64), de forma direta e síncrona
- * assim que o FileReader termina. Usamos data: URL (em vez de blob:)
- * porque ela carrega instantaneamente quando atribuída a um <img>, sem
- * depender de o navegador "resolver" uma referência externa — eliminando
- * uma fonte comum de atraso/inconsistência em alguns navegadores Android.
+ * Uma única tentativa de ler um File como data: URL via FileReader.
+ * Rejeita a Promise se o FileReader disparar onerror ou devolver algo
+ * vazio/inválido.
  */
-export function fileToDataUrl(file: File): Promise<string> {
+function attemptFileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
@@ -66,6 +64,44 @@ export function fileToDataUrl(file: File): Promise<string> {
     reader.onerror = () => reject(new Error("Não foi possível ler o arquivo selecionado."));
     reader.readAsDataURL(file);
   });
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Converte um File em uma data: URL (base64), com retry automático.
+ *
+ * Em alguns aparelhos Android, o File vindo da galeria/câmera referencia
+ * um content provider do sistema que às vezes ainda não terminou de
+ * "liberar" o arquivo no momento em que o FileReader tenta lê-lo — a
+ * leitura falha sem motivo aparente, mas tentar de novo logo depois
+ * costuma funcionar, porque o provider já resolveu nesse intervalo.
+ *
+ * Por isso, em vez de falhar na primeira tentativa, tentamos várias vezes
+ * com um pequeno intervalo crescente entre elas, e só mostramos erro pro
+ * usuário se todas as tentativas falharem.
+ */
+export async function fileToDataUrl(file: File): Promise<string> {
+  const MAX_ATTEMPTS = 5;
+  const BASE_DELAY_MS = 250;
+
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      return await attemptFileToDataUrl(file);
+    } catch (err) {
+      lastError = err;
+      if (attempt < MAX_ATTEMPTS) {
+        await wait(BASE_DELAY_MS * attempt);
+      }
+    }
+  }
+
+  console.error("fileToDataUrl: todas as tentativas falharam", lastError);
+  throw new Error("Tente novamente em alguns segundos.");
 }
 
 /**
