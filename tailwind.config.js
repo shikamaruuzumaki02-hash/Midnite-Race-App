@@ -30,6 +30,25 @@ module.exports = {
         mono: ["Rajdhani", "sans-serif"],
         blackletter: ["UnifrakturCook", "serif"],
       },
+      keyframes: {
+        "pulse-glow": {
+          "0%, 100%": { opacity: "0.6", transform: "scale(1)" },
+          "50%": { opacity: "1", transform: "scale(1.08)" },
+        },
+        "sweep-light": {
+          "0%": { transform: "translateX(0%)" },
+          "100%": { transform: "translateX(250%)" },
+        },
+        "fade-in-up": {
+          "0%": { opacity: "0", transform: "translateY(16px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+      },
+      animation: {
+        "pulse-glow": "pulse-glow 4s ease-in-out infinite",
+        "sweep-light": "sweep-light 6s ease-in-out infinite",
+        "fade-in-up": "fade-in-up 0.6s ease-out forwards",
+      },
     },
   },
   plugins: [],
