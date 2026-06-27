@@ -15,9 +15,13 @@ import { Upload, Loader2, Check, X } from "lucide-react";
 export default function AvatarUploadField({
   currentUrl,
   onUploaded,
+  bucket = "avatars",
+  label = "FOTO DO PILOTO (OPCIONAL)",
 }: {
   currentUrl: string;
   onUploaded: (url: string) => void;
+  bucket?: string;
+  label?: string;
 }) {
   const supabase = createClient();
   const [uploading, setUploading] = useState(false);
@@ -122,7 +126,7 @@ export default function AvatarUploadField({
       );
 
       const { error: uploadError } = await supabase.storage
-        .from("avatars")
+        .from(bucket)
         .upload(croppedFile.name, croppedFile, { cacheControl: "3600", upsert: false });
 
       if (uploadError) {
@@ -132,7 +136,7 @@ export default function AvatarUploadField({
       }
 
       const { data: publicUrlData } = supabase.storage
-        .from("avatars")
+        .from(bucket)
         .getPublicUrl(croppedFile.name);
       const publicUrl = publicUrlData.publicUrl;
 
@@ -155,7 +159,7 @@ export default function AvatarUploadField({
   return (
     <div>
       <label className="block font-mono text-[11px] text-ink-faint mb-1.5 tracking-wide">
-        FOTO DO PILOTO (OPCIONAL)
+        {label}
       </label>
 
       <div className="flex items-center gap-3">
