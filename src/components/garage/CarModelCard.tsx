@@ -15,21 +15,19 @@ export default function CarModelCard({ model, garageCount }: CarModelCardProps) 
     <Link href={`/garagem/${model.id}`}>
       <HudPanel className="relative flex h-24 items-center overflow-hidden rounded-lg border border-asphalt-border bg-asphalt-card transition-colors hover:border-ember">
         {image && (
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex w-[60%] items-center justify-end">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={image}
-              alt=""
-              className="h-[160%] max-w-full object-contain opacity-45"
-            />
-          </div>
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={image}
+            alt=""
+            className="pointer-events-none absolute bottom-0 right-0 h-full max-w-[55%] object-contain object-bottom opacity-90"
+          />
         )}
 
         <div
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(to right, rgba(10,10,12,0.95) 0%, rgba(10,10,12,0.85) 40%, rgba(10,10,12,0.1) 100%)',
+              'linear-gradient(to right, rgba(10,10,12,0.95) 0%, rgba(10,10,12,0.7) 40%, rgba(10,10,12,0.05) 100%)',
           }}
         />
 
