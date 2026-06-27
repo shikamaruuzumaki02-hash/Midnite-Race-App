@@ -26,24 +26,24 @@ export default function AvatarUploadField({
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
+    const inputEl = e.target;
     if (!file) return;
 
     setError(null);
 
     if (!file.type.startsWith("image/")) {
       setError("Selecione um arquivo de imagem (JPG, PNG, etc.).");
-      e.target.value = "";
+      inputEl.value = "";
       return;
     }
 
     if (file.size > 15 * 1024 * 1024) {
       setError("A imagem deve ter no máximo 15MB.");
-      e.target.value = "";
+      inputEl.value = "";
       return;
     }
 
     setPreparing(true);
-    e.target.value = "";
 
     try {
       const dataUrl = await fileToDataUrl(file);
@@ -61,6 +61,7 @@ export default function AvatarUploadField({
       );
     } finally {
       setPreparing(false);
+      inputEl.value = "";
     }
   }
 
