@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import HudPanel from '@/components/HudPanel';
 import { getCarModelImage } from '@/lib/carModels';
 import type { CarModel } from '@/lib/garage';
 
@@ -41,7 +40,7 @@ export default function CarModelCard({ model, garageCount }: CarModelCardProps) 
           />
         </div>
 
-        <div className="relative z-10 flex flex-col gap-1 px-4">
+        <div className="relative z-10 flex flex-col gap-1 pl-5 pr-4">
           <span className="font-display text-base uppercase tracking-wide text-ink sm:text-lg">
             {model.name}
           </span>
@@ -54,10 +53,11 @@ export default function CarModelCard({ model, garageCount }: CarModelCardProps) 
           </span>
         </div>
 
-        <HudPanel className="pointer-events-none absolute inset-0 z-20">
-          {null}
-        </HudPanel>
+        <span className="pointer-events-none absolute left-0 top-0 z-20 h-3 w-3 border-l-2 border-t-2 border-ember/50" />
+        <span className="pointer-events-none absolute right-0 top-0 z-20 h-3 w-3 border-r-2 border-t-2 border-ember/50" />
+        <span className="pointer-events-none absolute bottom-0 left-0 z-20 h-3 w-3 border-l-2 border-b-2 border-ember/50" />
+        <span className="pointer-events-none absolute bottom-0 right-0 z-20 h-3 w-3 border-r-2 border-b-2 border-ember/50" />
       </div>
     </Link>
   );
-}
+            }
