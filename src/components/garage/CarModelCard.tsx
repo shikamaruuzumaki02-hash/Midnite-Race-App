@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ChevronRight } from 'lucide-react';
 import HudPanel from '@/components/HudPanel';
 import { getCarModelImage } from '@/lib/carModels';
 import type { CarModel } from '@/lib/garage';
@@ -13,7 +14,7 @@ export default function CarModelCard({ model, garageCount }: CarModelCardProps) 
 
   return (
     <Link href={`/garagem/${model.id}`}>
-      <HudPanel className="relative flex h-24 items-center overflow-hidden rounded-lg border border-asphalt-border bg-asphalt-card transition-colors hover:border-ember">
+      <HudPanel className="relative flex h-24 items-center overflow-hidden rounded-lg border border-l-2 border-asphalt-border border-l-ember bg-asphalt-card transition-colors hover:border-ember">
         {image && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -43,6 +44,8 @@ export default function CarModelCard({ model, garageCount }: CarModelCardProps) 
                 : `${garageCount} garagens`}
           </span>
         </div>
+
+        <ChevronRight className="absolute right-3 top-1/2 z-10 h-5 w-5 -translate-y-1/2 text-ink-faint" />
       </HudPanel>
     </Link>
   );
