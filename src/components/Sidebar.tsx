@@ -66,7 +66,13 @@ export default function Sidebar({
         </div>
 
         <nav className="px-3 py-4 space-y-1 border-b border-asphalt-border shrink-0">
-          <SidebarLink href="/" icon={Flag} label="Competições" active={pathname === "/"} onClick={() => setMobileOpen(false)} />
+          <SidebarLink
+            href="/competicoes"
+            icon={Flag}
+            label="Competições"
+            active={pathname === "/competicoes"}
+            onClick={() => setMobileOpen(false)}
+          />
           <SidebarLink
             href="/hall-dos-campeoes"
             icon={Crown}
@@ -247,15 +253,4 @@ function TournamentLink({
         </span>
         {isLive && <span className="w-1.5 h-1.5 rounded-full bg-checkpoint shrink-0 ml-2" />}
       </div>
-      <div className="flex items-center gap-1.5 mt-0.5 font-mono text-[10px] text-ink-dim">
-        <span>{tournament.format === "KNOCKOUT" ? "MATA-MATA" : "LIGA"}</span>
-        {tournament.season && (
-          <>
-            <span>·</span>
-            <span>{tournament.season}</span>
-          </>
-        )}
-      </div>
-    </Link>
-  );
-}
+      <div className="flex items-center gap-1.5
