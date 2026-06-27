@@ -1,9 +1,15 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Cropper, { Area } from "react-easy-crop";
 import { createClient } from "@/lib/supabase/client";
-import { getCroppedImageFile, fileToDataUrl, loadImageElement } from "@/lib/cropImage";
+import {
+  getCroppedImageFile,
+  loadImageElement,
+  fileToObjectUrl,
+  revokeObjectUrlSafe,
+  downscaleImageIfNeeded,
+} from "@/lib/cropImage";
 import { Upload, Loader2, Check, X } from "lucide-react";
 
 export default function AvatarUploadField({
@@ -23,6 +29,24 @@ export default function AvatarUploadField({
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedArea, setCroppedArea] = useState<Area | null>(null);
+
+  // Guarda a blob: URL ativa para poder revogá-la em qualquer caminho de
+  // saída (cancelar, confirmar, troca de imagem, ou desmontagem do
+  // componente), evitando acúmulo de memória no navegador.
+  const activeObjectUrlRef = useRef<string | null>(null);
+
+  function clearActiveObjectUrl() {
+    revokeObjectUrlSafe(activeObjectUrlRef.current);
+    activeObjectUrlRef.current = null;
+  }
+
+  // Libera a blob: URL ativa se o usuário navegar para fora da página ou
+  // o componente for desmontado com o crop ainda aberto.
+  useEffect(() => {
+    return () => {
+      clearActiveObjectUrl();
+    };
+  }, []);
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -46,14 +70,24 @@ export default function AvatarUploadField({
     setPreparing(true);
 
     try {
-      const dataUrl = await fileToDataUrl(file);
-      await loadImageElement(dataUrl);
+      // Se a foto for muito grande (comum em câmeras modernas), reduz
+      // antes de entrar no crop, evitando sobrecarregar o canvas.
+      const resizedFile = await downscaleImageIfNeeded(file, 1920);
 
-      setRawImageSrc(dataUrl);
+      const objectUrl = fileToObjectUrl(resizedFile);
+      await loadImageElement(objectUrl);
+
+      // Substitui qualquer URL anterior (ex: o usuário escolheu outra
+      // foto sem confirmar a primeira).
+      clearActiveObjectUrl();
+      activeObjectUrlRef.current = objectUrl;
+
+      setRawImageSrc(objectUrl);
       setCrop({ x: 0, y: 0 });
       setZoom(1);
       setCroppedArea(null);
     } catch (err) {
+      console.error("AvatarUploadField: erro ao preparar imagem", err);
       setError(
         err instanceof Error
           ? err.message
@@ -70,6 +104,7 @@ export default function AvatarUploadField({
   }, []);
 
   function cancelCrop() {
+    clearActiveObjectUrl();
     setRawImageSrc(null);
   }
 
@@ -103,8 +138,10 @@ export default function AvatarUploadField({
 
       setPreview(publicUrl);
       onUploaded(publicUrl);
+      clearActiveObjectUrl();
       setRawImageSrc(null);
     } catch (err) {
+      console.error("AvatarUploadField: erro ao confirmar crop", err);
       setError(
         err instanceof Error
           ? err.message
