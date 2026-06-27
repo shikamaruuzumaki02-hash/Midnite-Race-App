@@ -76,16 +76,18 @@ function wait(ms: number): Promise<void> {
  * Em alguns aparelhos Android, o File vindo da galeria/câmera referencia
  * um content provider do sistema que às vezes ainda não terminou de
  * "liberar" o arquivo no momento em que o FileReader tenta lê-lo — a
- * leitura falha sem motivo aparente, mas tentar de novo logo depois
+ * leitura falha sem motivo aparente, mas tentar de novo um pouco depois
  * costuma funcionar, porque o provider já resolveu nesse intervalo.
  *
- * Por isso, em vez de falhar na primeira tentativa, tentamos várias vezes
- * com um pequeno intervalo crescente entre elas, e só mostramos erro pro
- * usuário se todas as tentativas falharem.
+ * O que importa aqui é o tempo real de espera entre tentativas (o
+ * provider do Android precisa de segundos, não milissegundos, pra
+ * liberar o arquivo) — por isso o delay cresce 1s a cada tentativa
+ * (1s, 2s, 3s, 4s, 5s...), em vez de várias tentativas rápidas em
+ * sequência, que tendem a falhar todas pelo mesmo motivo.
  */
 export async function fileToDataUrl(file: File): Promise<string> {
-  const MAX_ATTEMPTS = 5;
-  const BASE_DELAY_MS = 250;
+  const MAX_ATTEMPTS = 6;
+  const DELAY_STEP_MS = 1000;
 
   let lastError: unknown;
 
@@ -95,7 +97,7 @@ export async function fileToDataUrl(file: File): Promise<string> {
     } catch (err) {
       lastError = err;
       if (attempt < MAX_ATTEMPTS) {
-        await wait(BASE_DELAY_MS * attempt);
+        await wait(DELAY_STEP_MS * attempt);
       }
     }
   }
