@@ -40,7 +40,7 @@ export default async function TournamentPage({ params }: { params: { slug: strin
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar tournaments={list} role={profile?.role ?? null} loggedIn={!!userId} />
+      <Sidebar tournaments={list} profile={profile} loggedIn={!!userId} />
 
       <main className="flex-1 min-w-0">
         <div className="border-b border-asphalt-border bg-asphalt/80 backdrop-blur-sm sticky top-0 z-20">
