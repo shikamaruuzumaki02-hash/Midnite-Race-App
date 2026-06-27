@@ -1,6 +1,6 @@
 import Link from 'next/link';
-import { Car } from 'lucide-react';
 import HudPanel from '@/components/HudPanel';
+import { getCarModelImage } from '@/lib/carModels';
 import type { CarModel } from '@/lib/garage';
 
 interface CarModelCardProps {
@@ -9,20 +9,40 @@ interface CarModelCardProps {
 }
 
 export default function CarModelCard({ model, garageCount }: CarModelCardProps) {
+  const image = getCarModelImage(model.name);
+
   return (
     <Link href={`/garagem/${model.id}`}>
-      <HudPanel className="flex h-full flex-col items-center justify-center gap-2 rounded-lg border border-asphalt-border bg-asphalt-card p-4 text-center transition-colors hover:border-ember">
-        <Car className="h-8 w-8 text-ember" />
-        <span className="font-display text-base uppercase tracking-wide text-ink">
-          {model.name}
-        </span>
-        <span className="font-mono text-xs text-ink-faint">
-          {garageCount === 0
-            ? 'Nenhuma garagem'
-            : garageCount === 1
-              ? '1 garagem'
-              : `${garageCount} garagens`}
-        </span>
+      <HudPanel className="relative flex h-24 items-center overflow-hidden rounded-lg border border-asphalt-border bg-asphalt-card transition-colors hover:border-ember">
+        {image && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={image}
+            alt=""
+            className="pointer-events-none absolute bottom-0 right-0 h-full max-w-[55%] object-contain object-bottom opacity-25"
+          />
+        )}
+
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              'linear-gradient(to right, rgba(10,10,12,0.95) 0%, rgba(10,10,12,0.85) 40%, rgba(10,10,12,0.1) 100%)',
+          }}
+        />
+
+        <div className="relative z-10 flex flex-col gap-1 px-4">
+          <span className="font-display text-base uppercase tracking-wide text-ink sm:text-lg">
+            {model.name}
+          </span>
+          <span className="font-mono text-xs text-ember">
+            {garageCount === 0
+              ? 'Nenhuma garagem'
+              : garageCount === 1
+                ? '1 garagem'
+                : `${garageCount} garagens`}
+          </span>
+        </div>
       </HudPanel>
     </Link>
   );
