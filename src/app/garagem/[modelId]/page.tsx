@@ -29,7 +29,7 @@ export default async function ModeloGaragemPage({ params }: PageProps) {
   const otherGarages = allGarages.filter((g) => g.id !== userGarage?.id);
 
   return (
-    <div className="pt-20 lg:pt-8">
+    <div className="px-4 pt-20 lg:px-8 lg:pt-8">
       <HazardHeader icon={Car} title={model.name} />
 
       {user && (
