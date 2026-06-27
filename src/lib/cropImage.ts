@@ -48,8 +48,10 @@ export function loadImageElement(src: string): Promise<HTMLImageElement> {
 
 /**
  * Uma única tentativa de ler um File como data: URL via FileReader.
- * Rejeita a Promise se o FileReader disparar onerror ou devolver algo
- * vazio/inválido.
+ *
+ * MODO DIAGNÓSTICO: em caso de erro, inclui o nome técnico real do erro
+ * do FileReader na mensagem, pra identificar a causa exata (temporário,
+ * remover depois de diagnosticado).
  */
 function attemptFileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -58,10 +60,14 @@ function attemptFileToDataUrl(file: File): Promise<string> {
       if (typeof reader.result === "string" && reader.result.length > 0) {
         resolve(reader.result);
       } else {
-        reject(new Error("Não foi possível ler o arquivo selecionado."));
+        reject(new Error("Não foi possível ler o arquivo selecionado. [resultado vazio]"));
       }
     };
-    reader.onerror = () => reject(new Error("Não foi possível ler o arquivo selecionado."));
+    reader.onerror = () => {
+      const err = reader.error;
+      const detalhe = err ? `${err.name}: ${err.message}` : "erro desconhecido";
+      reject(new Error(`Não foi possível ler o arquivo selecionado. [DEBUG: ${detalhe}]`));
+    };
     reader.readAsDataURL(file);
   });
 }
@@ -72,18 +78,6 @@ function wait(ms: number): Promise<void> {
 
 /**
  * Converte um File em uma data: URL (base64), com retry automático.
- *
- * Em alguns aparelhos Android, o File vindo da galeria/câmera referencia
- * um content provider do sistema que às vezes ainda não terminou de
- * "liberar" o arquivo no momento em que o FileReader tenta lê-lo — a
- * leitura falha sem motivo aparente, mas tentar de novo um pouco depois
- * costuma funcionar, porque o provider já resolveu nesse intervalo.
- *
- * O que importa aqui é o tempo real de espera entre tentativas (o
- * provider do Android precisa de segundos, não milissegundos, pra
- * liberar o arquivo) — por isso o delay cresce 1s a cada tentativa
- * (1s, 2s, 3s, 4s, 5s...), em vez de várias tentativas rápidas em
- * sequência, que tendem a falhar todas pelo mesmo motivo.
  */
 export async function fileToDataUrl(file: File): Promise<string> {
   const MAX_ATTEMPTS = 6;
@@ -103,6 +97,12 @@ export async function fileToDataUrl(file: File): Promise<string> {
   }
 
   console.error("fileToDataUrl: todas as tentativas falharam", lastError);
+
+  // MODO DIAGNÓSTICO: propaga a mensagem detalhada da última falha,
+  // em vez da mensagem genérica, pra identificar a causa exata.
+  if (lastError instanceof Error) {
+    throw lastError;
+  }
   throw new Error("Tente novamente em alguns segundos.");
 }
 
