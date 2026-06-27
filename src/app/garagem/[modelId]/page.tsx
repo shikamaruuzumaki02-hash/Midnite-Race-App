@@ -42,7 +42,7 @@ export default async function ModeloGaragemPage({ params }: PageProps) {
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar tournaments={list} role={profile?.role ?? null} loggedIn={!!userId} />
+      <Sidebar tournaments={list} profile={profile} loggedIn={!!userId} />
 
       <main className="flex-1 min-w-0">
         <div className="px-6 lg:px-10 pt-20 lg:pt-8 pb-8 max-w-6xl mx-auto">
