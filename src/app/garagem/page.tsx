@@ -22,7 +22,7 @@ export default async function GaragemPage() {
   });
 
   return (
-    <div className="pt-20 lg:pt-8">
+    <div className="px-4 pt-20 lg:px-8 lg:pt-8">
       <HazardHeader icon={Warehouse} title="Garagem" />
 
       <p className="mb-6 mt-4 font-mono text-sm text-ink-muted">
