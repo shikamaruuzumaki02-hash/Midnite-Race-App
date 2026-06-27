@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Flag, Crown, ChevronRight, Lock, Settings, Plus, LogOut, Users, Menu, X, MapPin } from "lucide-react";
+import { Flag, Crown, ChevronRight, Lock, Settings, Plus, LogOut, Users, Menu, X, MapPin, Warehouse } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Tournament, Role } from "@/types/database";
 
@@ -78,6 +78,13 @@ export default function Sidebar({
           icon={Crown}
           label="Hall dos Campeões"
           active={pathname === "/hall-dos-campeoes"}
+          onClick={() => setMobileOpen(false)}
+        />
+        <SidebarLink
+          href="/garagem"
+          icon={Warehouse}
+          label="Garagem"
+          active={pathname === "/garagem" || pathname.startsWith("/garagem/")}
           onClick={() => setMobileOpen(false)}
         />
         {role === "ADMIN" && (
