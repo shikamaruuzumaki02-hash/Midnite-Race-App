@@ -3,33 +3,26 @@
 import Link from "next/link";
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Flag, Crown, ChevronRight, Lock, Settings, Plus, LogOut, Users, Menu, X, MapPin, Warehouse } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import type { Tournament, Role } from "@/types/database";
+import { Flag, Crown, ChevronRight, Plus, Users, Menu, X, MapPin, Warehouse, User } from "lucide-react";
+import type { Tournament, Profile } from "@/types/database";
 
 export default function Sidebar({
   tournaments,
-  role,
+  profile,
   loggedIn,
 }: {
   tournaments: Tournament[];
-  role: Role | null;
+  profile: Profile | null;
   loggedIn: boolean;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const supabase = createClient();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const role = profile?.role ?? null;
 
   const ongoing = tournaments.filter((t) => t.status === "ONGOING");
   const past = tournaments.filter((t) => t.status === "FINISHED");
   const upcoming = tournaments.filter((t) => t.status === "UPCOMING");
-
-  async function handleLogout() {
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
-  }
 
   return (
     <>
@@ -49,11 +42,12 @@ export default function Sidebar({
       )}
 
       <aside
-        className={`w-[280px] shrink-0 bg-asphalt-panel border-r border-asphalt-border flex flex-col fixed lg:sticky top-0 h-screen z-40 transition-transform duration-200 ${
+        className={`w-[280px] shrink-0 bg-asphalt-panel border-r border-asphalt-border flex flex-col fixed lg:sticky top-0 z-40 transition-transform duration-200 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         } lg:translate-x-0`}
+        style={{ height: "100dvh" }}
       >
-        <div className="px-6 py-7 border-b border-asphalt-border flex items-center justify-between">
+        <div className="px-6 py-7 border-b border-asphalt-border flex items-center justify-between shrink-0">
           <Link href="/" onClick={() => setMobileOpen(false)}>
             <div className="font-display text-2xl leading-none tracking-wider text-ink">
               MIDNITE<span className="text-ember">BR</span>
@@ -71,113 +65,119 @@ export default function Sidebar({
           </button>
         </div>
 
-      <nav className="px-3 py-4 space-y-1 border-b border-asphalt-border">
-        <SidebarLink href="/" icon={Flag} label="Competições" active={pathname === "/"} onClick={() => setMobileOpen(false)} />
-        <SidebarLink
-          href="/hall-dos-campeoes"
-          icon={Crown}
-          label="Hall dos Campeões"
-          active={pathname === "/hall-dos-campeoes"}
-          onClick={() => setMobileOpen(false)}
-        />
-        <SidebarLink
-          href="/garagem"
-          icon={Warehouse}
-          label="Garagem"
-          active={pathname === "/garagem" || pathname.startsWith("/garagem/")}
-          onClick={() => setMobileOpen(false)}
-        />
-        {role === "ADMIN" && (
+        <nav className="px-3 py-4 space-y-1 border-b border-asphalt-border shrink-0">
+          <SidebarLink href="/" icon={Flag} label="Competições" active={pathname === "/"} onClick={() => setMobileOpen(false)} />
           <SidebarLink
-            href="/admin/pilotos"
-            icon={Users}
-            label="Pilotos"
-            active={pathname === "/admin/pilotos" || pathname === "/admin/pilotos/novo"}
+            href="/hall-dos-campeoes"
+            icon={Crown}
+            label="Hall dos Campeões"
+            active={pathname === "/hall-dos-campeoes"}
             onClick={() => setMobileOpen(false)}
           />
-        )}
-        {role === "ADMIN" && (
           <SidebarLink
-            href="/admin/pistas"
-            icon={MapPin}
-            label="Pistas"
-            active={pathname === "/admin/pistas"}
+            href="/garagem"
+            icon={Warehouse}
+            label="Garagem"
+            active={pathname === "/garagem" || pathname.startsWith("/garagem/")}
             onClick={() => setMobileOpen(false)}
           />
-        )}
-      </nav>
+          {role === "ADMIN" && (
+            <SidebarLink
+              href="/admin/pilotos"
+              icon={Users}
+              label="Pilotos"
+              active={pathname === "/admin/pilotos" || pathname === "/admin/pilotos/novo"}
+              onClick={() => setMobileOpen(false)}
+            />
+          )}
+          {role === "ADMIN" && (
+            <SidebarLink
+              href="/admin/pistas"
+              icon={MapPin}
+              label="Pistas"
+              active={pathname === "/admin/pistas"}
+              onClick={() => setMobileOpen(false)}
+            />
+          )}
+        </nav>
 
-      <div className="flex-1 overflow-y-auto px-3 py-4">
-        {ongoing.length > 0 && (
-          <>
-            <SidebarGroupLabel label="Em andamento" />
-            {ongoing.map((t) => (
-              <TournamentLink key={t.id} tournament={t} active={pathname === `/torneios/${t.slug}`} onClick={() => setMobileOpen(false)} />
-            ))}
-          </>
-        )}
+        <div className="flex-1 overflow-y-auto px-3 py-4 min-h-0">
+          {ongoing.length > 0 && (
+            <>
+              <SidebarGroupLabel label="Em andamento" />
+              {ongoing.map((t) => (
+                <TournamentLink key={t.id} tournament={t} active={pathname === `/torneios/${t.slug}`} onClick={() => setMobileOpen(false)} />
+              ))}
+            </>
+          )}
 
-        {upcoming.length > 0 && (
-          <>
-            <SidebarGroupLabel label="Em breve" className="mt-6" />
-            {upcoming.map((t) => (
-              <TournamentLink key={t.id} tournament={t} active={pathname === `/torneios/${t.slug}`} onClick={() => setMobileOpen(false)} />
-            ))}
-          </>
-        )}
+          {upcoming.length > 0 && (
+            <>
+              <SidebarGroupLabel label="Em breve" className="mt-6" />
+              {upcoming.map((t) => (
+                <TournamentLink key={t.id} tournament={t} active={pathname === `/torneios/${t.slug}`} onClick={() => setMobileOpen(false)} />
+              ))}
+            </>
+          )}
 
-        {past.length > 0 && (
-          <>
-            <SidebarGroupLabel label="Edições anteriores" className="mt-6" />
-            {past.map((t) => (
-              <TournamentLink key={t.id} tournament={t} active={pathname === `/torneios/${t.slug}`} onClick={() => setMobileOpen(false)} />
-            ))}
-          </>
-        )}
+          {past.length > 0 && (
+            <>
+              <SidebarGroupLabel label="Edições anteriores" className="mt-6" />
+              {past.map((t) => (
+                <TournamentLink key={t.id} tournament={t} active={pathname === `/torneios/${t.slug}`} onClick={() => setMobileOpen(false)} />
+              ))}
+            </>
+          )}
 
-        {tournaments.length === 0 && (
-          <p className="px-3 text-sm text-ink-faint">Nenhuma competição ainda.</p>
-        )}
+          {tournaments.length === 0 && (
+            <p className="px-3 text-sm text-ink-faint">Nenhuma competição ainda.</p>
+          )}
 
-        {role === "ADMIN" && (
-          <Link
-            href="/admin/torneios/novo"
-            onClick={() => setMobileOpen(false)}
-            className="w-full mt-4 flex items-center gap-2 px-3 py-2.5 text-sm text-ink-muted border border-dashed border-asphalt-borderLight hover:border-ember hover:text-ember transition-colors rounded-sm"
-          >
-            <Plus size={14} />
-            Nova competição
-          </Link>
-        )}
-      </div>
+          {role === "ADMIN" && (
+            <Link
+              href="/admin/torneios/novo"
+              onClick={() => setMobileOpen(false)}
+              className="w-full mt-4 flex items-center gap-2 px-3 py-2.5 text-sm text-ink-muted border border-dashed border-asphalt-borderLight hover:border-ember hover:text-ember transition-colors rounded-sm"
+            >
+              <Plus size={14} />
+              Nova competição
+            </Link>
+          )}
+        </div>
 
-      <div className="px-4 py-4 border-t border-asphalt-border">
-        {loggedIn ? (
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-between px-3 py-2.5 bg-asphalt-card border border-asphalt-border rounded-sm hover:border-asphalt-borderLight transition-colors group"
-          >
-            <span className="flex items-center gap-2 text-xs font-mono text-ink-muted">
-              {role === "ADMIN" ? (
-                <Settings size={13} className="text-ember" />
-              ) : (
-                <Lock size={13} />
-              )}
-              {role === "ADMIN" ? "MODO ADMIN" : "VISUALIZADOR"}
-            </span>
-            <LogOut size={13} className="text-ink-faint group-hover:text-ember transition-colors" />
-          </button>
-        ) : (
-          <Link
-            href="/login"
-            className="w-full flex items-center justify-between px-3 py-2.5 bg-asphalt-card border border-asphalt-border rounded-sm hover:border-ember transition-colors"
-          >
-            <span className="text-xs font-mono text-ink-muted">ENTRAR</span>
-            <ChevronRight size={13} className="text-ink-faint" />
-          </Link>
-        )}
-      </div>
-    </aside>
+        <div className="px-4 py-4 border-t border-asphalt-border shrink-0">
+          {loggedIn ? (
+            <Link
+              href="/perfil"
+              onClick={() => setMobileOpen(false)}
+              className="w-full flex items-center justify-between px-3 py-2.5 bg-asphalt-card border border-asphalt-border rounded-sm hover:border-ember transition-colors group"
+            >
+              <span className="flex items-center gap-2.5 overflow-hidden">
+                <span className="w-7 h-7 rounded-sm bg-asphalt-panel border border-asphalt-border flex items-center justify-center shrink-0 overflow-hidden">
+                  {profile?.avatar_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <User size={14} className="text-ink-dim" />
+                  )}
+                </span>
+                <span className="text-xs font-mono text-ink-muted truncate">
+                  {profile?.name || "Piloto"}
+                </span>
+              </span>
+              <ChevronRight size={13} className="text-ink-faint shrink-0 group-hover:text-ember transition-colors" />
+            </Link>
+          ) : (
+            <Link
+              href="/login"
+              className="w-full flex items-center justify-between px-3 py-2.5 bg-asphalt-card border border-asphalt-border rounded-sm hover:border-ember transition-colors"
+            >
+              <span className="text-xs font-mono text-ink-muted">ENTRAR</span>
+              <ChevronRight size={13} className="text-ink-faint" />
+            </Link>
+          )}
+        </div>
+      </aside>
     </>
   );
 }
