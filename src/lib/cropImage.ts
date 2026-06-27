@@ -48,10 +48,6 @@ export function loadImageElement(src: string): Promise<HTMLImageElement> {
 
 /**
  * Uma única tentativa de ler um File como data: URL via FileReader.
- *
- * MODO DIAGNÓSTICO: em caso de erro, inclui o nome técnico real do erro
- * do FileReader na mensagem, pra identificar a causa exata (temporário,
- * remover depois de diagnosticado).
  */
 function attemptFileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -60,14 +56,10 @@ function attemptFileToDataUrl(file: File): Promise<string> {
       if (typeof reader.result === "string" && reader.result.length > 0) {
         resolve(reader.result);
       } else {
-        reject(new Error("Não foi possível ler o arquivo selecionado. [resultado vazio]"));
+        reject(new Error("Não foi possível ler o arquivo selecionado."));
       }
     };
-    reader.onerror = () => {
-      const err = reader.error;
-      const detalhe = err ? `${err.name}: ${err.message}` : "erro desconhecido";
-      reject(new Error(`Não foi possível ler o arquivo selecionado. [DEBUG: ${detalhe}]`));
-    };
+    reader.onerror = () => reject(new Error("Não foi possível ler o arquivo selecionado."));
     reader.readAsDataURL(file);
   });
 }
@@ -78,9 +70,17 @@ function wait(ms: number): Promise<void> {
 
 /**
  * Converte um File em uma data: URL (base64), com retry automático.
+ *
+ * A causa raiz do erro intermitente nesse fluxo era outra: o componente
+ * que chama esta função limpava o valor do <input type="file"> antes da
+ * leitura terminar, o que em alguns navegadores Android revoga a
+ * permissão temporária de acesso ao arquivo (NotReadableError) — corrigido
+ * movendo essa limpeza para depois da leitura. O retry abaixo continua
+ * como uma rede de segurança extra para casos de lentidão genuína do
+ * dispositivo, mas não é mais a defesa principal contra o bug.
  */
 export async function fileToDataUrl(file: File): Promise<string> {
-  const MAX_ATTEMPTS = 6;
+  const MAX_ATTEMPTS = 3;
   const DELAY_STEP_MS = 1000;
 
   let lastError: unknown;
@@ -97,13 +97,7 @@ export async function fileToDataUrl(file: File): Promise<string> {
   }
 
   console.error("fileToDataUrl: todas as tentativas falharam", lastError);
-
-  // MODO DIAGNÓSTICO: propaga a mensagem detalhada da última falha,
-  // em vez da mensagem genérica, pra identificar a causa exata.
-  if (lastError instanceof Error) {
-    throw lastError;
-  }
-  throw new Error("Tente novamente em alguns segundos.");
+  throw new Error("Não foi possível ler o arquivo selecionado. Tente novamente.");
 }
 
 /**
