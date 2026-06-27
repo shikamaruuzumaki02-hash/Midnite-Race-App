@@ -6,6 +6,7 @@ export type MatchStatus = "SCHEDULED" | "COMPLETED" | "WALKOVER" | "CANCELLED";
 export interface Profile {
   id: string;
   name: string | null;
+  avatar_url: string | null;
   role: Role;
   created_at: string;
 }
