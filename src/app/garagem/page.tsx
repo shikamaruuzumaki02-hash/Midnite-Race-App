@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { getCarModels } from '@/lib/garage';
+import { sortModelsByFixedOrder } from '@/lib/carModels';
 import CarModelCard from '@/components/garage/CarModelCard';
 import HazardHeader from '@/components/HazardHeader';
 import { Warehouse } from 'lucide-react';
@@ -8,7 +9,8 @@ export const dynamic = 'force-dynamic';
 
 export default async function GaragemPage() {
   const supabase = createClient();
-  const models = await getCarModels();
+  const allModels = await getCarModels();
+  const models = sortModelsByFixedOrder(allModels);
 
   const { data: garageCounts } = await supabase
     .from('garages')
@@ -27,7 +29,7 @@ export default async function GaragemPage() {
         Escolha um modelo pra ver as garagens dos pilotos.
       </p>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+      <div className="flex flex-col gap-3">
         {models.map((model) => (
           <CarModelCard
             key={model.id}
