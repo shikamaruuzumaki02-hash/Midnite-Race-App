@@ -1,5 +1,7 @@
 "use client";
 
+import Logo from "@/components/Logo";
+
 /**
  * Tela de abertura da homepage — estilo "menu de título" de jogo de
  * corrida. Logo grande e centralizada, com um glow âmbar pulsante atrás
@@ -47,7 +49,7 @@ export default function LandingHero() {
 
       {/* Conteúdo central */}
       <div className="relative z-10 flex flex-col items-center text-center px-6">
-        <div className="flex items-center gap-2 mb-4 opacity-0 animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
+        <div className="flex items-center gap-2 mb-6 opacity-0 animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
           <span className="h-px w-10 bg-ember" />
           <span className="font-mono text-[11px] text-ember tracking-[0.3em]">
             BEM-VINDO À CENA
@@ -55,18 +57,11 @@ export default function LandingHero() {
           <span className="h-px w-10 bg-ember" />
         </div>
 
-        <h1
-          className="font-display text-5xl sm:text-6xl lg:text-7xl leading-none tracking-wider text-ink opacity-0 animate-fade-in-up"
+        <div
+          className="opacity-0 animate-fade-in-up w-full max-w-2xl"
           style={{ animationDelay: "0.25s" }}
         >
-          MIDNITE<span className="text-ember">BR</span>
-        </h1>
-
-        <div
-          className="font-mono text-xs sm:text-sm tracking-[0.35em] text-ink-faint mt-3 opacity-0 animate-fade-in-up"
-          style={{ animationDelay: "0.4s" }}
-        >
-          SSR — STREET SERIES
+          <Logo className="w-full" />
         </div>
 
         <p
