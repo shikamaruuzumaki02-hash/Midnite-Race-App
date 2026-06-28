@@ -5,6 +5,7 @@ import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Flag, Crown, ChevronRight, Plus, Users, Menu, X, MapPin, Warehouse, User } from "lucide-react";
 import type { Tournament, Profile } from "@/types/database";
+import Logo from "@/components/Logo";
 
 export default function Sidebar({
   tournaments,
@@ -49,12 +50,7 @@ export default function Sidebar({
       >
         <div className="px-6 py-7 border-b border-asphalt-border flex items-center justify-between shrink-0">
           <Link href="/" onClick={() => setMobileOpen(false)}>
-            <div className="font-display text-2xl leading-none tracking-wider text-ink">
-              MIDNITE<span className="text-ember">BR</span>
-            </div>
-            <div className="font-mono text-[10px] tracking-[0.3em] text-ink-faint mt-1">
-              SSR — STREET SERIES
-            </div>
+            <Logo className="w-44" />
           </Link>
           <button
             onClick={() => setMobileOpen(false)}
