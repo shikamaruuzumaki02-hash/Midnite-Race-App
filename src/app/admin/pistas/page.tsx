@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth";
 import Sidebar from "@/components/Sidebar";
 import NewTrackForm from "@/components/NewTrackForm";
+import EditTrackForm from "@/components/EditTrackForm";
+import DeleteTrackButton from "@/components/DeleteTrackButton";
 import HazardHeader from "@/components/HazardHeader";
 import HudPanel from "@/components/HudPanel";
 import { MapPin, ListChecks } from "lucide-react";
@@ -49,13 +51,22 @@ export default async function TracksPage() {
                     key={t.id}
                     className="bg-asphalt-panel border border-asphalt-border rounded-sm p-4"
                   >
-                    <div className="font-display text-sm text-ink">{t.name}</div>
-                    {t.type && (
-                      <div className="font-mono text-[11px] text-ink-faint mt-0.5">{t.type}</div>
-                    )}
-                    {t.description && (
-                      <div className="text-xs text-ink-muted mt-2">{t.description}</div>
-                    )}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-display text-sm text-ink">{t.name}</div>
+                        {t.type && (
+                          <div className="font-mono text-[11px] text-ink-faint mt-0.5">{t.type}</div>
+                        )}
+                        {t.description && (
+                          <div className="text-xs text-ink-muted mt-2">{t.description}</div>
+                        )}
+                      </div>
+                      <EditTrackForm track={t} />
+                    </div>
+
+                    <div className="mt-3 pt-3 border-t border-asphalt-border">
+                      <DeleteTrackButton trackId={t.id} />
+                    </div>
                   </HudPanel>
                 ))}
               </div>
