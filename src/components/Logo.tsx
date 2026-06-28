@@ -1,17 +1,8 @@
 import type { SVGProps } from "react";
 
 /**
- * Logo "MIDNITEBR / SSR â€” STREET SERIES", estilo grafite/marcador
- * inspirado no logotipo de Need for Speed Most Wanted (2005).
- *
- * Desenho vetorizado a partir de uma arte gerada por IA (sticker
- * preto e branco, contorno duplo). Renderizado como path SVG fixo
- * (nÃ£o Ã© texto/fonte), entÃ£o o conteÃºdo textual nÃ£o Ã© editÃ¡vel via
- * props â€” sÃ³ o tamanho, via className (ex: "w-40", "w-72").
- *
- * Uso:
- *   <Logo className="w-40" />        // sidebar
- *   <Logo className="w-full max-w-xl" /> // hero da home
+ * Logo MIDNITEBR / SSR - STREET SERIES, estilo grafite.
+ * Path SVG fixo (nao e texto/fonte). Tamanho via className.
  */
 export default function Logo(props: SVGProps<SVGSVGElement>) {
   return (
@@ -19,8 +10,7 @@ export default function Logo(props: SVGProps<SVGSVGElement>) {
       viewBox="35 79 2322 566"
       preserveAspectRatio="xMidYMid meet"
       xmlns="http://www.w3.org/2000/svg"
-      width="100%"
-      height="100%"
+      style={{ border: "3px solid red", minWidth: "150px", minHeight: "50px", display: "block" }}
       {...props}
     >
       <g fill="#e8e6e3" stroke="none">
