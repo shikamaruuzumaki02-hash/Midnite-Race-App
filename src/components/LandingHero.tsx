@@ -61,7 +61,7 @@ export default function LandingHero() {
           className="opacity-0 animate-fade-in-up w-full max-w-2xl"
           style={{ animationDelay: "0.25s" }}
         >
-          <Logo className="w-full" />
+          <Logo className="w-full h-auto" />
         </div>
 
         <p
