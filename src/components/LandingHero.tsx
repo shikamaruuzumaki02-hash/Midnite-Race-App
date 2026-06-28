@@ -5,8 +5,20 @@
  * corrida. Logo grande e centralizada, com um glow âmbar pulsante atrás
  * e uma linha de luz horizontal varrendo lentamente, como o farol de um
  * carro passando na pista. Tudo em CSS puro, sem imagens externas.
+ *
+ * O botão "TOCAR PARA COMEÇAR" abaixo da logo só aparece em mobile
+ * (lg:hidden) e simula um clique no botão hambúrguer já existente na
+ * Sidebar, que abre o menu deslizante. Em desktop a Sidebar já fica
+ * sempre visível e fixa, então o botão não tem função ali.
  */
 export default function LandingHero() {
+  function openMobileMenu() {
+    const hamburgerButton = document.querySelector<HTMLButtonElement>(
+      'button[aria-label="Abrir menu"]'
+    );
+    hamburgerButton?.click();
+  }
+
   return (
     <div className="relative flex-1 min-h-screen overflow-hidden bg-asphalt flex items-center justify-center">
       {/* Textura de fundo: grid sutil, lembrando o piso de uma garagem */}
@@ -63,6 +75,15 @@ export default function LandingHero() {
         >
           Competições, garagens e o hall dos campeões da cena de street racing.
         </p>
+
+        <button
+          type="button"
+          onClick={openMobileMenu}
+          className="lg:hidden mt-10 flex items-center gap-3 px-7 py-3 border border-ember/50 rounded-sm font-display text-sm tracking-[0.2em] text-ember opacity-0 animate-fade-in-up animate-pulse-glow"
+          style={{ animationDelay: "0.7s" }}
+        >
+          TOCAR PARA COMEÇAR
+        </button>
       </div>
     </div>
   );
