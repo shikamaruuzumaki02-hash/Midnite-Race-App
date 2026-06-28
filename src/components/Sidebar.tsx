@@ -49,8 +49,8 @@ export default function Sidebar({
         style={{ height: "100dvh" }}
       >
         <div className="px-6 py-7 border-b border-asphalt-border flex items-center justify-between shrink-0">
-          <Link href="/" onClick={() => setMobileOpen(false)}>
-            <Logo className="w-44" />
+          <Link href="/" onClick={() => setMobileOpen(false)} className="block">
+            <Logo className="w-44 h-auto" />
           </Link>
           <button
             onClick={() => setMobileOpen(false)}
