@@ -42,12 +42,23 @@ export default function Sidebar({
       )}
 
       <aside
-        className={`w-[280px] shrink-0 bg-asphalt-panel border-r border-asphalt-border flex flex-col fixed lg:sticky top-0 z-40 transition-transform duration-200 ${
+        className={`relative w-[280px] shrink-0 overflow-hidden bg-gradient-to-b from-asphalt-panel to-asphalt border-r border-asphalt-border flex flex-col fixed lg:sticky top-0 z-40 transition-transform duration-200 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         } lg:translate-x-0`}
         style={{ height: "100dvh" }}
       >
-        <div className="px-6 py-7 border-b border-asphalt-border flex items-center justify-between shrink-0">
+        {/* Textura sutil de grão, dando uma sensação de painel metálico
+            em vez de cor lisa. Mesma técnica usada no HomeHero. */}
+        <div
+          className="absolute inset-0 opacity-[0.04] pointer-events-none"
+          style={{
+            backgroundImage:
+              "repeating-linear-gradient(45deg, #ffffff 0px, #ffffff 1px, transparent 1px, transparent 14px)",
+          }}
+          aria-hidden="true"
+        />
+
+        <div className="relative z-10 px-6 py-7 border-b border-asphalt-border flex items-center justify-between shrink-0">
           <Link href="/" onClick={() => setMobileOpen(false)}>
             <div className="font-display text-2xl leading-none tracking-wider text-ink">
               MIDNITE<span className="text-ember">BR</span>
@@ -65,7 +76,7 @@ export default function Sidebar({
           </button>
         </div>
 
-        <nav className="px-3 py-4 space-y-1 border-b border-asphalt-border shrink-0">
+        <nav className="relative z-10 px-3 py-4 space-y-1 border-b border-asphalt-border shrink-0">
           <SidebarLink
             href="/competicoes"
             icon={Flag}
@@ -107,7 +118,7 @@ export default function Sidebar({
           )}
         </nav>
 
-        <div className="flex-1 overflow-y-auto px-3 py-4 min-h-0">
+        <div className="relative z-10 flex-1 overflow-y-auto px-3 py-4 min-h-0">
           {ongoing.length > 0 && (
             <>
               <SidebarGroupLabel label="Em andamento" />
@@ -151,7 +162,7 @@ export default function Sidebar({
           )}
         </div>
 
-        <div className="px-4 py-4 border-t border-asphalt-border shrink-0">
+        <div className="relative z-10 px-4 py-4 border-t border-asphalt-border shrink-0">
           {loggedIn ? (
             <Link
               href="/perfil"
@@ -264,4 +275,4 @@ function TournamentLink({
       </div>
     </Link>
   );
-}
+        }
