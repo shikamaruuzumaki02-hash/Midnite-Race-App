@@ -28,22 +28,12 @@ export default function TrackRoulette({ tracks }: { tracks: Track[] }) {
 
     const winnerIndex = Math.floor(Math.random() * sliceCount);
 
-    // O ponteiro fica fixo no topo (0°/12h). Cada fatia i ocupa o arco
-    // [i * sliceAngle, (i+1) * sliceAngle) a partir do topo, em sentido
-    // horário, NA POSIÇÃO DE REPOUSO (rotação 0). Para calcular quanto
-    // girar a partir da posição ATUAL, precisamos primeiro descobrir o
-    // ângulo equivalente atual (rotation % 360) — porque "rotation" em si
-    // acumula valores grandes e residuais de giros anteriores (ex: 1850°,
-    // 4732.4°), e usar esse valor bruto na fórmula desalinha o cálculo a
-    // partir do segundo giro em diante.
     const currentAngleMod = ((rotation % 360) + 360) % 360;
 
     const winnerSliceCenter = winnerIndex * sliceAngle + sliceAngle / 2;
-    const extraFullSpins = 5; // giros completos extra, só para o efeito visual
-    const randomJitter = (Math.random() - 0.5) * (sliceAngle * 0.6); // não cair sempre no centro exato
+    const extraFullSpins = 5;
+    const randomJitter = (Math.random() - 0.5) * (sliceAngle * 0.6);
 
-    // Quanto a roleta precisa girar, A PARTIR DA POSIÇÃO ATUAL EQUIVALENTE,
-    // para que o centro da fatia sorteada chegue a 0° (sob o ponteiro).
     const deltaToTarget = (360 - winnerSliceCenter - currentAngleMod + 360) % 360;
 
     const targetRotation =
@@ -72,7 +62,7 @@ export default function TrackRoulette({ tracks }: { tracks: Track[] }) {
   return (
     <div className="relative flex flex-col items-center">
       {/* Roleta */}
-      <div className="relative w-72 h-72 sm:w-80 sm:h-80">
+      <div className="relative w-80 h-80 sm:w-96 sm:h-96">
         {/* Glow externo, contornando toda a roleta */}
         <div
           className="absolute inset-0 rounded-full"
@@ -116,11 +106,10 @@ export default function TrackRoulette({ tracks }: { tracks: Track[] }) {
             const endAngle = startAngle + sliceAngle;
             const path = describeSlice(100, 100, 95, startAngle, endAngle);
             const labelAngle = startAngle + sliceAngle / 2;
-            const labelPos = polarToCartesian(100, 100, 60, labelAngle);
+            // Raio do texto aumentado (era 60), aproveitando mais espaço
+            // da fatia agora que a roleta está maior em tela.
+            const labelPos = polarToCartesian(100, 100, 68, labelAngle);
 
-            // Texto "deitado" ao longo do raio (de dentro pra fora). No
-            // lado esquerdo do círculo (90° a 270°) somamos 180° para
-            // manter a leitura correta.
             const isLeftHalf = labelAngle > 90 && labelAngle < 270;
             const textRotation = isLeftHalf
               ? labelAngle - 90 + 180
@@ -142,22 +131,20 @@ export default function TrackRoulette({ tracks }: { tracks: Track[] }) {
                   x={labelPos.x}
                   y={labelPos.y}
                   fill={textColor}
-                  fontSize={sliceCount > 8 ? 7 : 9}
+                  fontSize={sliceCount > 8 ? 6.5 : 8.5}
                   fontWeight={700}
                   fontFamily="Rajdhani, sans-serif"
                   textAnchor="middle"
                   dominantBaseline="middle"
                   transform={`rotate(${textRotation}, ${labelPos.x}, ${labelPos.y})`}
                 >
-                  {truncateLabel(track.name, sliceCount > 8 ? 10 : 14)}
+                  {truncateLabel(track.name, sliceCount > 8 ? 18 : 22)}
                 </text>
               </g>
             );
           })}
         </svg>
 
-        {/* Botão GIRAR, fixo no centro — não gira junto com o SVG, para
-            o texto nunca ficar de cabeça para baixo durante a animação */}
         <button
           type="button"
           onClick={handleSpin}
@@ -212,8 +199,6 @@ export default function TrackRoulette({ tracks }: { tracks: Track[] }) {
 }
 
 function polarToCartesian(cx: number, cy: number, r: number, angleDeg: number) {
-  // Ângulo 0 apontando para cima (12h), sentido horário — para bater com
-  // a orientação do ponteiro fixo no topo.
   const angleRad = ((angleDeg - 90) * Math.PI) / 180;
   return {
     x: cx + r * Math.cos(angleRad),
