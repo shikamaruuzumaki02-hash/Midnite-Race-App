@@ -4,19 +4,11 @@ import { useState, useRef } from "react";
 import { Loader2, Check } from "lucide-react";
 import type { Track } from "@/types/database";
 
-// Quatro tons com luminosidade mais equilibrada entre si, para evitar o
-// efeito de contraste simultâneo (fatias muito claras parecem "maiores"
-// que fatias muito escuras, mesmo com ângulos idênticos). Mantém o tema
-// ember/asphalt, mas evita extremos: nem ember puro muito vibrante, nem
-// preto quase absoluto.
-const SLICE_COLORS = [
-  "#b8431f", // ember escurecido
-  "#3a3a40", // cinza médio (mais claro que asphalt-card puro)
-  "#d9612f", // ember-light escurecido
-  "#4a4a52", // cinza médio, um tom acima do anterior
-];
+// Duas cores alternadas, ambas dentro do tema ember/asphalt — luminosidade
+// mais parecida entre si do que ter 4 tons diferentes, reduzindo o efeito
+// de contraste simultâneo sem perder a identidade visual do site.
+const SLICE_COLORS = ["#ff5a1f", "#1a1a1e"];
 
-const BORDER_COLOR = "#e8e6e1"; // ink — neutro, fora da paleta de preenchimento
 const SPIN_DURATION_MS = 3200;
 
 export default function TrackRoulette({ tracks }: { tracks: Track[] }) {
@@ -74,20 +66,28 @@ export default function TrackRoulette({ tracks }: { tracks: Track[] }) {
     <div className="relative flex flex-col items-center">
       {/* Roleta */}
       <div className="relative w-72 h-72 sm:w-80 sm:h-80">
+        {/* Glow externo, contornando toda a roleta */}
+        <div
+          className="absolute inset-0 rounded-full"
+          style={{ boxShadow: "0 0 24px 4px rgba(255, 90, 31, 0.35)" }}
+          aria-hidden="true"
+        />
+
         {/* Ponteiro fixo no topo */}
         <div
-          className="absolute -top-2 left-1/2 -translate-x-1/2 z-10 w-0 h-0"
+          className="absolute -top-2 left-1/2 -translate-x-1/2 z-20 w-0 h-0"
           style={{
             borderLeft: "12px solid transparent",
             borderRight: "12px solid transparent",
             borderTop: "20px solid #ff5a1f",
+            filter: "drop-shadow(0 0 6px rgba(255, 90, 31, 0.8))",
           }}
           aria-hidden="true"
         />
 
         <svg
           viewBox="0 0 200 200"
-          className="w-full h-full drop-shadow-lg"
+          className="w-full h-full relative z-10"
           style={{
             transform: `rotate(${rotation}deg)`,
             transition: spinning
@@ -95,8 +95,14 @@ export default function TrackRoulette({ tracks }: { tracks: Track[] }) {
               : "none",
           }}
         >
-          {/* Anel externo, reforçando o limite visual da roleta inteira */}
-          <circle cx={100} cy={100} r={96} fill="none" stroke={BORDER_COLOR} strokeWidth={2} />
+          <defs>
+            <filter id="sliceGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="0" stdDeviation="1.2" floodColor="#ff5a1f" floodOpacity="0.6" />
+            </filter>
+          </defs>
+
+          {/* Anel externo fino, em ember */}
+          <circle cx={100} cy={100} r={97} fill="none" stroke="#ff5a1f" strokeWidth={1.5} opacity={0.7} />
 
           {tracks.map((track, i) => {
             const startAngle = i * sliceAngle;
@@ -105,28 +111,32 @@ export default function TrackRoulette({ tracks }: { tracks: Track[] }) {
             const labelAngle = startAngle + sliceAngle / 2;
             const labelPos = polarToCartesian(100, 100, 60, labelAngle);
 
-            // Texto "deitado" ao longo do raio (de dentro pra fora), como
-            // numa roda de sorteio clássica. No lado esquerdo do círculo
-            // (90° a 270°) somamos 180° para manter a leitura correta.
+            // Texto "deitado" ao longo do raio (de dentro pra fora). No
+            // lado esquerdo do círculo (90° a 270°) somamos 180° para
+            // manter a leitura correta.
             const isLeftHalf = labelAngle > 90 && labelAngle < 270;
             const textRotation = isLeftHalf
               ? labelAngle - 90 + 180
               : labelAngle - 90;
 
+            const fillColor = SLICE_COLORS[i % SLICE_COLORS.length];
+            const textColor = fillColor === "#ff5a1f" ? "#0a0a0c" : "#e8e6e1";
+
             return (
               <g key={track.id}>
                 <path
                   d={path}
-                  fill={SLICE_COLORS[i % SLICE_COLORS.length]}
-                  stroke={BORDER_COLOR}
-                  strokeWidth={1.5}
+                  fill={fillColor}
+                  stroke="#ff5a1f"
+                  strokeWidth={1}
+                  filter="url(#sliceGlow)"
                 />
                 <text
                   x={labelPos.x}
                   y={labelPos.y}
-                  fill="#e8e6e1"
+                  fill={textColor}
                   fontSize={sliceCount > 8 ? 7 : 9}
-                  fontWeight={600}
+                  fontWeight={700}
                   fontFamily="Rajdhani, sans-serif"
                   textAnchor="middle"
                   dominantBaseline="middle"
@@ -139,25 +149,18 @@ export default function TrackRoulette({ tracks }: { tracks: Track[] }) {
           })}
         </svg>
 
-        {/* Centro decorativo — cor neutra, fora da paleta das fatias */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-asphalt border-2 border-ink" />
+        {/* Botão GIRAR, fixo no centro — não gira junto com o SVG, para
+            o texto nunca ficar de cabeça para baixo durante a animação */}
+        <button
+          type="button"
+          onClick={handleSpin}
+          disabled={spinning}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-16 h-16 rounded-full bg-asphalt border-2 border-ember flex items-center justify-center font-display text-xs tracking-wide text-ember hover:bg-asphalt-card transition-colors disabled:opacity-60"
+          style={{ boxShadow: "0 0 16px 2px rgba(255, 90, 31, 0.5)" }}
+        >
+          {spinning ? <Loader2 size={18} className="animate-spin" /> : "GIRAR"}
+        </button>
       </div>
-
-      <button
-        type="button"
-        onClick={handleSpin}
-        disabled={spinning}
-        className="mt-6 flex items-center gap-2 px-6 py-3 bg-ember text-asphalt font-display text-sm tracking-wide rounded-sm hover:bg-ember-light transition-colors disabled:opacity-50"
-      >
-        {spinning ? (
-          <>
-            <Loader2 size={16} className="animate-spin" />
-            GIRANDO...
-          </>
-        ) : (
-          "GIRAR"
-        )}
-      </button>
 
       {/* Overlay de resultado */}
       {winner && (
@@ -227,4 +230,4 @@ function describeSlice(cx: number, cy: number, r: number, startAngle: number, en
 function truncateLabel(name: string, maxLength: number) {
   if (name.length <= maxLength) return name;
   return `${name.slice(0, maxLength - 1)}…`;
-}
+                       }
