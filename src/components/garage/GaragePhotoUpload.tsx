@@ -2,13 +2,12 @@
 
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Trash2, Upload, Loader2 } from 'lucide-react';
+import { Trash2, Upload, Loader2, Images } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import {
   deleteGaragePhoto,
   insertGaragePhoto,
   deleteGarage,
-  getNextAvailablePosition,
   MAX_GARAGE_PHOTOS,
   type GaragePhoto,
 } from '@/lib/garage';
@@ -25,9 +24,10 @@ export default function GaragePhotoUpload({
   initialPhotos,
 }: GaragePhotoUploadProps) {
   const [photos, setPhotos] = useState<GaragePhoto[]>(initialPhotos);
-  const [loadingSlot, setLoadingSlot] = useState<number | null>(null);
+  const [loadingSlots, setLoadingSlots] = useState<Set<number>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
+  const bulkInputRef = useRef<HTMLInputElement | null>(null);
   const router = useRouter();
 
   const slots = Array.from({ length: MAX_GARAGE_PHOTOS }, (_, i) => i);
@@ -36,42 +36,99 @@ export default function GaragePhotoUpload({
     return photos.find((p) => p.position === slot);
   }
 
-  async function handleFileSelected(slot: number, file: File) {
+  function getEmptySlots(currentPhotos: GaragePhoto[]): number[] {
+    return slots.filter((slot) => !currentPhotos.find((p) => p.position === slot));
+  }
+
+  async function uploadToSlot(
+    slot: number,
+    file: File,
+    currentPhotos: GaragePhoto[]
+  ): Promise<GaragePhoto> {
+    const supabase = createClient();
+    const existingPhoto = currentPhotos.find((p) => p.position === slot);
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${userId}/${garageId}-${slot}-${Date.now()}.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('garage-photos')
+      .upload(fileName, file, { upsert: true });
+
+    if (uploadError) throw uploadError;
+
+    const { data: urlData } = supabase.storage
+      .from('garage-photos')
+      .getPublicUrl(fileName);
+
+    if (existingPhoto) {
+      await deleteGaragePhoto(existingPhoto.id);
+    }
+
+    return await insertGaragePhoto(garageId, urlData.publicUrl, slot);
+  }
+
+  // Upload em massa — preenche slots vagos em ordem
+  async function handleBulkUpload(files: FileList) {
     setError(null);
-    setLoadingSlot(slot);
+    const fileArray = Array.from(files);
+    const emptySlots = getEmptySlots(photos);
+
+    if (emptySlots.length === 0) {
+      setError('Todos os slots já estão preenchidos.');
+      return;
+    }
+
+    const slotsToFill = emptySlots.slice(0, fileArray.length);
+    const filesToUpload = fileArray.slice(0, slotsToFill.length);
+
+    if (fileArray.length > emptySlots.length) {
+      setError(
+        `Você tem ${emptySlots.length} slot(s) disponível(is). Apenas as primeiras ${emptySlots.length} fotos serão enviadas.`
+      );
+    }
+
+    setLoadingSlots(new Set(slotsToFill));
 
     try {
-      const supabase = createClient();
-      const existingPhoto = getPhotoForSlot(slot);
+      const results = await Promise.all(
+        filesToUpload.map((file, i) => uploadToSlot(slotsToFill[i], file, photos))
+      );
 
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${userId}/${garageId}-${slot}-${Date.now()}.${fileExt}`;
+      setPhotos((prev) => {
+        const withoutReplaced = prev.filter(
+          (p) => !slotsToFill.includes(p.position)
+        );
+        return [...withoutReplaced, ...results];
+      });
+    } catch (err) {
+      console.error(err);
+      setError('Erro ao enviar fotos. Tente novamente.');
+    } finally {
+      setLoadingSlots(new Set());
+    }
+  }
 
-      const { error: uploadError } = await supabase.storage
-        .from('garage-photos')
-        .upload(fileName, file, { upsert: true });
+  // Upload individual por slot (substituição)
+  async function handleFileSelected(slot: number, file: File) {
+    setError(null);
+    setLoadingSlots((prev) => new Set(prev).add(slot));
 
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage
-        .from('garage-photos')
-        .getPublicUrl(fileName);
-
-      const newUrl = urlData.publicUrl;
-
-      if (existingPhoto) {
-        await deleteGaragePhoto(existingPhoto.id);
-        const inserted = await insertGaragePhoto(garageId, newUrl, slot);
-        setPhotos((prev) => [...prev.filter((p) => p.id !== existingPhoto.id), inserted]);
-      } else {
-        const inserted = await insertGaragePhoto(garageId, newUrl, slot);
-        setPhotos((prev) => [...prev, inserted]);
-      }
+    try {
+      const inserted = await uploadToSlot(slot, file, photos);
+      setPhotos((prev) => [
+        ...prev.filter((p) => p.position !== slot),
+        inserted,
+      ]);
     } catch (err) {
       console.error(err);
       setError('Erro ao enviar foto. Tente novamente.');
     } finally {
-      setLoadingSlot(null);
+      setLoadingSlots((prev) => {
+        const next = new Set(prev);
+        next.delete(slot);
+        return next;
+      });
     }
   }
 
@@ -80,16 +137,13 @@ export default function GaragePhotoUpload({
     if (!photo) return;
 
     setError(null);
-    setLoadingSlot(slot);
+    setLoadingSlots((prev) => new Set(prev).add(slot));
 
     try {
       await deleteGaragePhoto(photo.id);
       const remainingPhotos = photos.filter((p) => p.id !== photo.id);
       setPhotos(remainingPhotos);
 
-      // Uma garagem nunca deve existir sem nenhuma foto. Se essa era a
-      // última foto restante, a garagem inteira é excluída (o cascade no
-      // banco já cuidaria das fotos, mas aqui já não resta nenhuma).
       if (remainingPhotos.length === 0) {
         await deleteGarage(garageId);
         router.refresh();
@@ -99,22 +153,56 @@ export default function GaragePhotoUpload({
       console.error(err);
       setError('Erro ao remover foto. Tente novamente.');
     } finally {
-      setLoadingSlot(null);
+      setLoadingSlots((prev) => {
+        const next = new Set(prev);
+        next.delete(slot);
+        return next;
+      });
     }
   }
 
+  const isAnyLoading = loadingSlots.size > 0;
+  const emptyCount = getEmptySlots(photos).length;
+
   return (
     <div>
-      <h4 className="mb-2 font-mono text-sm uppercase tracking-wide text-ink-muted">
-        Suas fotos ({photos.length}/{MAX_GARAGE_PHOTOS})
-      </h4>
+      <div className="mb-2 flex items-center justify-between">
+        <h4 className="font-mono text-sm uppercase tracking-wide text-ink-muted">
+          Suas fotos ({photos.length}/{MAX_GARAGE_PHOTOS})
+        </h4>
+
+        {emptyCount > 0 && (
+          <button
+            type="button"
+            disabled={isAnyLoading}
+            onClick={() => bulkInputRef.current?.click()}
+            className="flex items-center gap-1.5 rounded px-2 py-1 text-xs text-ink hover:text-ember disabled:opacity-50"
+          >
+            <Images className="h-4 w-4" />
+            Enviar até {emptyCount} foto{emptyCount > 1 ? 's' : ''}
+          </button>
+        )}
+      </div>
 
       {error && <p className="mb-2 text-sm text-danger">{error}</p>}
+
+      {/* Input oculto para upload em massa */}
+      <input
+        ref={bulkInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          if (e.target.files?.length) handleBulkUpload(e.target.files);
+          e.target.value = '';
+        }}
+      />
 
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
         {slots.map((slot) => {
           const photo = getPhotoForSlot(slot);
-          const isLoading = loadingSlot === slot;
+          const isLoading = loadingSlots.has(slot);
 
           return (
             <div
@@ -164,9 +252,7 @@ export default function GaragePhotoUpload({
               )}
 
               <input
-                ref={(el) => {
-                  fileInputRefs.current[slot] = el;
-                }}
+                ref={(el) => { fileInputRefs.current[slot] = el; }}
                 type="file"
                 accept="image/*"
                 className="hidden"
@@ -182,4 +268,4 @@ export default function GaragePhotoUpload({
       </div>
     </div>
   );
-                }
+      }
