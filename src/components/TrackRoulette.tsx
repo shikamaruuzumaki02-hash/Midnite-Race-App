@@ -4,9 +4,6 @@ import { useState, useRef } from "react";
 import { Loader2, Check } from "lucide-react";
 import type { Track } from "@/types/database";
 
-// Duas cores alternadas, ambas dentro do tema ember/asphalt — luminosidade
-// mais parecida entre si do que ter 4 tons diferentes, reduzindo o efeito
-// de contraste simultâneo sem perder a identidade visual do site.
 const SLICE_COLORS = ["#ff5a1f", "#1a1a1e"];
 
 const SPIN_DURATION_MS = 3200;
@@ -61,16 +58,13 @@ export default function TrackRoulette({ tracks }: { tracks: Track[] }) {
 
   return (
     <div className="relative flex flex-col items-center">
-      {/* Roleta */}
       <div className="relative w-80 h-80 sm:w-96 sm:h-96">
-        {/* Glow externo, contornando toda a roleta */}
         <div
           className="absolute inset-0 rounded-full"
           style={{ boxShadow: "0 0 24px 4px rgba(255, 90, 31, 0.35)" }}
           aria-hidden="true"
         />
 
-        {/* Ponteiro fixo no topo */}
         <div
           className="absolute -top-2 left-1/2 -translate-x-1/2 z-20 w-0 h-0"
           style={{
@@ -98,7 +92,6 @@ export default function TrackRoulette({ tracks }: { tracks: Track[] }) {
             </filter>
           </defs>
 
-          {/* Anel externo fino, em ember */}
           <circle cx={100} cy={100} r={97} fill="none" stroke="#ff5a1f" strokeWidth={1.5} opacity={0.7} />
 
           {tracks.map((track, i) => {
@@ -106,9 +99,10 @@ export default function TrackRoulette({ tracks }: { tracks: Track[] }) {
             const endAngle = startAngle + sliceAngle;
             const path = describeSlice(100, 100, 95, startAngle, endAngle);
             const labelAngle = startAngle + sliceAngle / 2;
-            // Raio do texto aumentado (era 60), aproveitando mais espaço
-            // da fatia agora que a roleta está maior em tela.
-            const labelPos = polarToCartesian(100, 100, 68, labelAngle);
+            // Raio recuado de 68 para 64 — o valor anterior deixava o
+            // texto vazar para fora da borda da roleta em fatias com
+            // nomes mais longos, especialmente nas posições de topo.
+            const labelPos = polarToCartesian(100, 100, 64, labelAngle);
 
             const isLeftHalf = labelAngle > 90 && labelAngle < 270;
             const textRotation = isLeftHalf
@@ -156,7 +150,6 @@ export default function TrackRoulette({ tracks }: { tracks: Track[] }) {
         </button>
       </div>
 
-      {/* Overlay de resultado */}
       {winner && (
         <div className="fixed inset-0 z-50 bg-asphalt/95 flex flex-col items-center justify-center px-6">
           <div className="flex items-center gap-2 mb-3 opacity-0 animate-fade-in-up">
