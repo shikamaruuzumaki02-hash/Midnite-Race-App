@@ -30,17 +30,24 @@ export default function TrackRoulette({ tracks }: { tracks: Track[] }) {
 
     // O ponteiro fica fixo no topo (0°/12h). Cada fatia i ocupa o arco
     // [i * sliceAngle, (i+1) * sliceAngle) a partir do topo, em sentido
-    // horário. Para que a fatia sorteada termine sob o ponteiro, a roda
-    // precisa girar até que o CENTRO dessa fatia fique em 0°.
+    // horário, NA POSIÇÃO DE REPOUSO (rotação 0). Para calcular quanto
+    // girar a partir da posição ATUAL, precisamos primeiro descobrir o
+    // ângulo equivalente atual (rotation % 360) — porque "rotation" em si
+    // acumula valores grandes e residuais de giros anteriores (ex: 1850°,
+    // 4732.4°), e usar esse valor bruto na fórmula desalinha o cálculo a
+    // partir do segundo giro em diante.
+    const currentAngleMod = ((rotation % 360) + 360) % 360;
+
     const winnerSliceCenter = winnerIndex * sliceAngle + sliceAngle / 2;
     const extraFullSpins = 5; // giros completos extra, só para o efeito visual
     const randomJitter = (Math.random() - 0.5) * (sliceAngle * 0.6); // não cair sempre no centro exato
 
+    // Quanto a roleta precisa girar, A PARTIR DA POSIÇÃO ATUAL EQUIVALENTE,
+    // para que o centro da fatia sorteada chegue a 0° (sob o ponteiro).
+    const deltaToTarget = (360 - winnerSliceCenter - currentAngleMod + 360) % 360;
+
     const targetRotation =
-      rotation +
-      extraFullSpins * 360 +
-      (360 - winnerSliceCenter) +
-      randomJitter;
+      rotation + extraFullSpins * 360 + deltaToTarget + randomJitter;
 
     setRotation(targetRotation);
 
@@ -230,4 +237,4 @@ function describeSlice(cx: number, cy: number, r: number, startAngle: number, en
 function truncateLabel(name: string, maxLength: number) {
   if (name.length <= maxLength) return name;
   return `${name.slice(0, maxLength - 1)}…`;
-                       }
+}
