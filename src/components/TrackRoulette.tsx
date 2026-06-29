@@ -94,7 +94,19 @@ export default function TrackRoulette({ tracks }: { tracks: Track[] }) {
             const endAngle = startAngle + sliceAngle;
             const path = describeSlice(100, 100, 95, startAngle, endAngle);
             const labelAngle = startAngle + sliceAngle / 2;
-            const labelPos = polarToCartesian(100, 100, 62, labelAngle);
+            const labelPos = polarToCartesian(100, 100, 60, labelAngle);
+
+            // Texto "deitado" ao longo do raio (de dentro pra fora), como
+            // numa roda de sorteio clássica. A rotação base é labelAngle - 90
+            // (perpendicular ao raio normal, alinhando com a direção radial).
+            // No lado esquerdo do círculo (90° a 270°) o texto ficaria de
+            // cabeça para baixo nessa orientação, então somamos 180° para
+            // virá-lo — ele passa a ser lido de fora para dentro nesse lado,
+            // que é o padrão esperado nesse estilo de roleta.
+            const isLeftHalf = labelAngle > 90 && labelAngle < 270;
+            const textRotation = isLeftHalf
+              ? labelAngle - 90 + 180
+              : labelAngle - 90;
 
             return (
               <g key={track.id}>
@@ -108,11 +120,12 @@ export default function TrackRoulette({ tracks }: { tracks: Track[] }) {
                   x={labelPos.x}
                   y={labelPos.y}
                   fill="#e8e6e1"
-                  fontSize={sliceCount > 8 ? 6 : 8}
+                  fontSize={sliceCount > 8 ? 7 : 9}
+                  fontWeight={600}
                   fontFamily="Rajdhani, sans-serif"
                   textAnchor="middle"
                   dominantBaseline="middle"
-                  transform={`rotate(${labelAngle}, ${labelPos.x}, ${labelPos.y})`}
+                  transform={`rotate(${textRotation}, ${labelPos.x}, ${labelPos.y})`}
                 >
                   {truncateLabel(track.name, sliceCount > 8 ? 10 : 14)}
                 </text>
@@ -209,4 +222,4 @@ function describeSlice(cx: number, cy: number, r: number, startAngle: number, en
 function truncateLabel(name: string, maxLength: number) {
   if (name.length <= maxLength) return name;
   return `${name.slice(0, maxLength - 1)}…`;
-                                 }
+}
