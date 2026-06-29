@@ -5,9 +5,10 @@ import Sidebar from "@/components/Sidebar";
 import NewTrackForm from "@/components/NewTrackForm";
 import EditTrackForm from "@/components/EditTrackForm";
 import DeleteTrackButton from "@/components/DeleteTrackButton";
+import TrackRoulette from "@/components/TrackRoulette";
 import HazardHeader from "@/components/HazardHeader";
 import HudPanel from "@/components/HudPanel";
-import { MapPin, ListChecks } from "lucide-react";
+import { MapPin, ListChecks, Dices } from "lucide-react";
 import type { Tournament, Track } from "@/types/database";
 
 export const revalidate = 0;
@@ -37,6 +38,13 @@ export default async function TracksPage() {
             <HazardHeader icon={MapPin} title="Nova pista" />
             <div className="mt-4">
               <NewTrackForm />
+            </div>
+          </section>
+
+          <section>
+            <HazardHeader icon={Dices} title="Roleta de pistas" />
+            <div className="mt-4">
+              <TrackRoulette tracks={trackList} />
             </div>
           </section>
 
