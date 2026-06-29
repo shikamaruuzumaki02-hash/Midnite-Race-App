@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { Trash2, Upload, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import {
   deleteGaragePhoto,
   insertGaragePhoto,
+  deleteGarage,
   getNextAvailablePosition,
   MAX_GARAGE_PHOTOS,
   type GaragePhoto,
@@ -26,6 +28,7 @@ export default function GaragePhotoUpload({
   const [loadingSlot, setLoadingSlot] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
+  const router = useRouter();
 
   const slots = Array.from({ length: MAX_GARAGE_PHOTOS }, (_, i) => i);
 
@@ -81,7 +84,17 @@ export default function GaragePhotoUpload({
 
     try {
       await deleteGaragePhoto(photo.id);
-      setPhotos((prev) => prev.filter((p) => p.id !== photo.id));
+      const remainingPhotos = photos.filter((p) => p.id !== photo.id);
+      setPhotos(remainingPhotos);
+
+      // Uma garagem nunca deve existir sem nenhuma foto. Se essa era a
+      // última foto restante, a garagem inteira é excluída (o cascade no
+      // banco já cuidaria das fotos, mas aqui já não resta nenhuma).
+      if (remainingPhotos.length === 0) {
+        await deleteGarage(garageId);
+        router.refresh();
+        return;
+      }
     } catch (err) {
       console.error(err);
       setError('Erro ao remover foto. Tente novamente.');
@@ -169,4 +182,4 @@ export default function GaragePhotoUpload({
       </div>
     </div>
   );
-              }
+                }
