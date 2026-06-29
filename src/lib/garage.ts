@@ -139,6 +139,17 @@ export async function createGarage(userId: string, modelId: string): Promise<Gar
   return { ...data, garage_photos: [] };
 }
 
+/**
+ * Exclui a garagem inteira (e, por cascade no banco, suas fotos
+ * associadas). Usado quando a última foto restante é removida — uma
+ * garagem nunca deve existir sem nenhuma foto.
+ */
+export async function deleteGarage(garageId: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from('garages').delete().eq('id', garageId);
+  if (error) throw error;
+}
+
 export function getNextAvailablePosition(photos: GaragePhoto[]): number | null {
   const usedPositions = new Set(photos.map((p) => p.position));
   for (let i = 0; i < MAX_GARAGE_PHOTOS; i++) {
@@ -167,4 +178,4 @@ export async function insertGaragePhoto(
 
   if (error) throw error;
   return data;
-    }
+}
