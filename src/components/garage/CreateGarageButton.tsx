@@ -4,7 +4,7 @@ import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { createGarage, insertGaragePhoto } from '@/lib/garage';
+import { createGarage, insertGaragePhoto, MAX_GARAGE_PHOTOS } from '@/lib/garage';
 
 interface CreateGarageButtonProps {
   userId: string;
@@ -21,31 +21,34 @@ export default function CreateGarageButton({ userId, modelId }: CreateGarageButt
     fileInputRef.current?.click();
   }
 
-  async function handleFileSelected(file: File) {
+  async function handleFilesSelected(files: FileList) {
     setLoading(true);
     setError(null);
 
+    const fileArray = Array.from(files).slice(0, MAX_GARAGE_PHOTOS);
+
     try {
-      // A garagem só é criada no banco quando a primeira foto já está
-      // pronta para ser enviada junto — uma garagem nunca deve existir
-      // sem ao menos 1 foto.
       const garage = await createGarage(userId, modelId);
-
       const supabase = createClient();
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${userId}/${garage.id}-0-${Date.now()}.${fileExt}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('garage-photos')
-        .upload(fileName, file, { upsert: true });
+      await Promise.all(
+        fileArray.map(async (file, slot) => {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${userId}/${garage.id}-${slot}-${Date.now()}.${fileExt}`;
 
-      if (uploadError) throw uploadError;
+          const { error: uploadError } = await supabase.storage
+            .from('garage-photos')
+            .upload(fileName, file, { upsert: true });
 
-      const { data: urlData } = supabase.storage
-        .from('garage-photos')
-        .getPublicUrl(fileName);
+          if (uploadError) throw uploadError;
 
-      await insertGaragePhoto(garage.id, urlData.publicUrl, 0);
+          const { data: urlData } = supabase.storage
+            .from('garage-photos')
+            .getPublicUrl(fileName);
+
+          await insertGaragePhoto(garage.id, urlData.publicUrl, slot);
+        })
+      );
 
       router.refresh();
     } catch (err) {
@@ -61,7 +64,7 @@ export default function CreateGarageButton({ userId, modelId }: CreateGarageButt
         Você ainda não tem uma garagem pra este modelo.
       </p>
       <p className="font-mono text-xs text-ink-faint">
-        Escolha uma foto para criar sua garagem.
+        Escolha até {MAX_GARAGE_PHOTOS} fotos para criar sua garagem.
       </p>
       <button
         type="button"
@@ -78,10 +81,11 @@ export default function CreateGarageButton({ userId, modelId }: CreateGarageButt
         ref={fileInputRef}
         type="file"
         accept="image/*"
+        multiple
         className="hidden"
         onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) handleFileSelected(file);
+          if (e.target.files?.length) handleFilesSelected(e.target.files);
+          e.target.value = '';
         }}
       />
     </div>
