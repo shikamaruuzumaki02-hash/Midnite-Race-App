@@ -4,13 +4,19 @@ import { useState, useRef } from "react";
 import { Loader2, Check } from "lucide-react";
 import type { Track } from "@/types/database";
 
+// Quatro tons com luminosidade mais equilibrada entre si, para evitar o
+// efeito de contraste simultâneo (fatias muito claras parecem "maiores"
+// que fatias muito escuras, mesmo com ângulos idênticos). Mantém o tema
+// ember/asphalt, mas evita extremos: nem ember puro muito vibrante, nem
+// preto quase absoluto.
 const SLICE_COLORS = [
-  "#ff5a1f", // ember
-  "#161619", // asphalt-card
-  "#ff7a45", // ember-light
-  "#262629", // asphalt-border
+  "#b8431f", // ember escurecido
+  "#3a3a40", // cinza médio (mais claro que asphalt-card puro)
+  "#d9612f", // ember-light escurecido
+  "#4a4a52", // cinza médio, um tom acima do anterior
 ];
 
+const BORDER_COLOR = "#e8e6e1"; // ink — neutro, fora da paleta de preenchimento
 const SPIN_DURATION_MS = 3200;
 
 export default function TrackRoulette({ tracks }: { tracks: Track[] }) {
@@ -89,6 +95,9 @@ export default function TrackRoulette({ tracks }: { tracks: Track[] }) {
               : "none",
           }}
         >
+          {/* Anel externo, reforçando o limite visual da roleta inteira */}
+          <circle cx={100} cy={100} r={96} fill="none" stroke={BORDER_COLOR} strokeWidth={2} />
+
           {tracks.map((track, i) => {
             const startAngle = i * sliceAngle;
             const endAngle = startAngle + sliceAngle;
@@ -97,12 +106,8 @@ export default function TrackRoulette({ tracks }: { tracks: Track[] }) {
             const labelPos = polarToCartesian(100, 100, 60, labelAngle);
 
             // Texto "deitado" ao longo do raio (de dentro pra fora), como
-            // numa roda de sorteio clássica. A rotação base é labelAngle - 90
-            // (perpendicular ao raio normal, alinhando com a direção radial).
-            // No lado esquerdo do círculo (90° a 270°) o texto ficaria de
-            // cabeça para baixo nessa orientação, então somamos 180° para
-            // virá-lo — ele passa a ser lido de fora para dentro nesse lado,
-            // que é o padrão esperado nesse estilo de roleta.
+            // numa roda de sorteio clássica. No lado esquerdo do círculo
+            // (90° a 270°) somamos 180° para manter a leitura correta.
             const isLeftHalf = labelAngle > 90 && labelAngle < 270;
             const textRotation = isLeftHalf
               ? labelAngle - 90 + 180
@@ -113,8 +118,8 @@ export default function TrackRoulette({ tracks }: { tracks: Track[] }) {
                 <path
                   d={path}
                   fill={SLICE_COLORS[i % SLICE_COLORS.length]}
-                  stroke="#0a0a0c"
-                  strokeWidth={1}
+                  stroke={BORDER_COLOR}
+                  strokeWidth={1.5}
                 />
                 <text
                   x={labelPos.x}
@@ -134,8 +139,8 @@ export default function TrackRoulette({ tracks }: { tracks: Track[] }) {
           })}
         </svg>
 
-        {/* Centro decorativo */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-asphalt border-2 border-ember" />
+        {/* Centro decorativo — cor neutra, fora da paleta das fatias */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-asphalt border-2 border-ink" />
       </div>
 
       <button
