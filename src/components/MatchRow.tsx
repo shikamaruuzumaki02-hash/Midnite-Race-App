@@ -23,8 +23,6 @@ export default function MatchRow({
   async function advanceBracketIfRoundComplete() {
     if (!match.round) return;
 
-    // Busca todas as partidas da mesma rodada deste torneio, na ordem em que
-    // foram criadas (mesma ordem de geração, importante para o pareamento correto).
     const { data: roundMatches, error: fetchError } = await supabase
       .from("matches")
       .select("*")
@@ -36,8 +34,6 @@ export default function MatchRow({
 
     if (!isRoundComplete(roundMatches as Match[])) return;
 
-    // Conta quantos pilotos tinha o torneio originalmente (inscritos),
-    // para saber qual o próximo nome de rodada.
     const { count } = await supabase
       .from("tournament_entries")
       .select("*", { count: "exact", head: true })
@@ -52,10 +48,8 @@ export default function MatchRow({
       return;
     }
 
-    // Se já era a Final, não há próxima rodada a gerar.
     if (!nextRoundName) return;
 
-    // Evita duplicar: se a próxima rodada já existe, não gera de novo.
     const { data: existingNextRound } = await supabase
       .from("matches")
       .select("id")
@@ -97,7 +91,6 @@ export default function MatchRow({
       .eq("id", match.id);
 
     if (format === "LEAGUE") {
-      // Busca as entries dos dois pilotos neste torneio para atualizar pontos/vitórias/derrotas
       const { data: entries } = await supabase
         .from("tournament_entries")
         .select("*")
@@ -157,6 +150,15 @@ export default function MatchRow({
 
   const isCompleted = match.status === "COMPLETED";
 
+  // Pistas da nova tabela match_tracks, ordenadas por position.
+  // Mantém compatibilidade com o campo legado match.track (corridas
+  // criadas antes dessa feature) — se não tiver match_tracks mas tiver
+  // track, exibe o campo legado como "Pista 1".
+  const matchTracks = match.match_tracks ?? [];
+  const sortedTracks = [...matchTracks].sort((a, b) => a.position - b.position);
+  const hasNewTracks = sortedTracks.length > 0;
+  const hasLegacyTrack = !hasNewTracks && !!match.track;
+
   return (
     <div className="bg-asphalt-panel border border-asphalt-border rounded-sm p-4">
       <div className="flex items-center justify-between font-mono text-[11px] text-ink-faint mb-3">
@@ -171,12 +173,25 @@ export default function MatchRow({
             : "Data a definir"}
           {match.round && ` · ${match.round}`}
         </span>
-        {match.track && (
-          <span className="flex items-center gap-1">
-            <MapPin size={11} /> {match.track.name}
-          </span>
-        )}
       </div>
+
+      {/* Pistas — nova tabela ou legado */}
+      {hasNewTracks && (
+        <div className="flex flex-wrap gap-x-3 gap-y-1 mb-3">
+          {sortedTracks.map((mt, i) => (
+            <span key={mt.id} className="flex items-center gap-1 font-mono text-[11px] text-ink-faint">
+              <MapPin size={11} className="text-ember shrink-0" />
+              <span className="text-ember">P{i + 1}:</span> {mt.track?.name ?? "—"}
+            </span>
+          ))}
+        </div>
+      )}
+      {hasLegacyTrack && (
+        <div className="flex items-center gap-1 font-mono text-[11px] text-ink-faint mb-3">
+          <MapPin size={11} />
+          {match.track!.name}
+        </div>
+      )}
 
       <div className="flex items-center justify-between mb-3">
         <span
