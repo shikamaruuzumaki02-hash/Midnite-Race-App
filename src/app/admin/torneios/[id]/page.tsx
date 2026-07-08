@@ -45,7 +45,13 @@ export default async function ManageTournamentPage({ params }: { params: { id: s
 
   const { data: matches } = await supabase
     .from("matches")
-    .select("*, driver_a:drivers!matches_driver_a_id_fkey(*), driver_b:drivers!matches_driver_b_id_fkey(*), track:tracks(*)")
+    .select(`
+      *,
+      driver_a:drivers!matches_driver_a_id_fkey(*),
+      driver_b:drivers!matches_driver_b_id_fkey(*),
+      track:tracks(*),
+      match_tracks(*, track:tracks(*))
+    `)
     .eq("tournament_id", tournament.id)
     .order("created_at", { ascending: true });
 
