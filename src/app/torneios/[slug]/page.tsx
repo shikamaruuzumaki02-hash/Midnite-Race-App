@@ -29,7 +29,13 @@ export default async function TournamentPage({ params }: { params: { slug: strin
 
   const { data: matches } = await supabase
     .from("matches")
-    .select("*, driver_a:drivers!matches_driver_a_id_fkey(*), driver_b:drivers!matches_driver_b_id_fkey(*), track:tracks(*)")
+    .select(`
+      *,
+      driver_a:drivers!matches_driver_a_id_fkey(*),
+      driver_b:drivers!matches_driver_b_id_fkey(*),
+      track:tracks(*),
+      match_tracks(*, track:tracks(*))
+    `)
     .eq("tournament_id", tournament.id)
     .order("created_at", { ascending: true });
 
@@ -78,39 +84,57 @@ export default async function TournamentPage({ params }: { params: { slug: strin
             <section>
               <HazardHeader icon={Calendar} title="Próximas corridas" />
               <div className="grid sm:grid-cols-2 gap-3">
-                {upcoming.map((m) => (
-                  <HudPanel
-                    key={m.id}
-                    className="bg-asphalt-panel border border-asphalt-border rounded-sm p-4 hover:border-asphalt-borderLight transition-colors"
-                  >
-                    <div className="flex items-center justify-between font-mono text-[11px] text-ember tracking-wide mb-3">
-                      <span>
-                        {m.scheduled_at
-                          ? new Date(m.scheduled_at).toLocaleString("pt-BR", {
-                              weekday: "short",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })
-                          : "A definir"}
-                      </span>
-                      <MapPin size={12} />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="font-display text-sm text-ink truncate max-w-[40%]">
-                        {m.driver_a?.gamertag}
-                      </span>
-                      <span className="font-display text-xs text-ink-dim px-2">VS</span>
-                      <span className="font-display text-sm text-ink truncate max-w-[40%]">
-                        {m.driver_b?.gamertag}
-                      </span>
-                    </div>
-                    {m.track && (
-                      <div className="mt-3 pt-3 border-t border-asphalt-border font-mono text-[11px] text-ink-faint">
-                        {m.track.name}
+                {upcoming.map((m) => {
+                  const sortedTracks = [...(m.match_tracks ?? [])].sort(
+                    (a, b) => a.position - b.position
+                  );
+                  const hasNewTracks = sortedTracks.length > 0;
+                  const hasLegacyTrack = !hasNewTracks && !!m.track;
+
+                  return (
+                    <HudPanel
+                      key={m.id}
+                      className="bg-asphalt-panel border border-asphalt-border rounded-sm p-4 hover:border-asphalt-borderLight transition-colors"
+                    >
+                      <div className="flex items-center justify-between font-mono text-[11px] text-ember tracking-wide mb-3">
+                        <span>
+                          {m.scheduled_at
+                            ? new Date(m.scheduled_at).toLocaleString("pt-BR", {
+                                weekday: "short",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })
+                            : "A definir"}
+                        </span>
+                        <MapPin size={12} />
                       </div>
-                    )}
-                  </HudPanel>
-                ))}
+                      <div className="flex items-center justify-between">
+                        <span className="font-display text-sm text-ink truncate max-w-[40%]">
+                          {m.driver_a?.gamertag}
+                        </span>
+                        <span className="font-display text-xs text-ink-dim px-2">VS</span>
+                        <span className="font-display text-sm text-ink truncate max-w-[40%]">
+                          {m.driver_b?.gamertag}
+                        </span>
+                      </div>
+
+                      {hasNewTracks && (
+                        <div className="mt-3 pt-3 border-t border-asphalt-border flex flex-wrap gap-x-3 gap-y-1">
+                          {sortedTracks.map((mt, i) => (
+                            <span key={mt.id} className="font-mono text-[11px] text-ink-faint">
+                              <span className="text-ember">P{i + 1}:</span> {mt.track?.name ?? "—"}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {hasLegacyTrack && (
+                        <div className="mt-3 pt-3 border-t border-asphalt-border font-mono text-[11px] text-ink-faint">
+                          {m.track!.name}
+                        </div>
+                      )}
+                    </HudPanel>
+                  );
+                })}
               </div>
             </section>
           )}
