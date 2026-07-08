@@ -39,6 +39,15 @@ export interface Track {
   description: string | null;
 }
 
+export interface MatchTrack {
+  id: string;
+  match_id: string;
+  track_id: string;
+  position: number;
+  created_at: string;
+  track?: Track;
+}
+
 export interface TournamentEntry {
   id: string;
   tournament_id: string;
@@ -69,6 +78,7 @@ export interface Match {
   driver_a?: Driver;
   driver_b?: Driver;
   track?: Track;
+  match_tracks?: MatchTrack[];
 }
 
 export interface Champion {
