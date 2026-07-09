@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from "react";
 
-// Frases fixas de estilo NFS — preenchem quando não há eventos reais
-// ou intercalam com eles pra manter a vibe mesmo em site zerado.
 const NFS_PHRASES = [
   "A noite pertence aos que ousam.",
   "Velocidade é respeito.",
@@ -17,39 +15,46 @@ const NFS_PHRASES = [
   "O motor fala quando as palavras faltam.",
 ];
 
-const DISPLAY_DURATION_MS = 3500; // tempo que cada item fica visível
-const BLINK_DURATION_MS = 120;    // velocidade do pisca (estilo terminal)
-const BLINK_CYCLES = 3;           // quantas vezes pisca antes de trocar
+const VISIBLE_DURATION_MS = 3500;
+const FADE_DURATION_MS = 600;
+
+function buildFeed(events: string[], phrases: string[]): string[] {
+  if (events.length === 0) return [...phrases];
+  const result: string[] = [];
+  let ei = 0;
+  let pi = 0;
+  while (ei < events.length || pi < phrases.length) {
+    if (ei < events.length) result.push(events[ei++]);
+    if (pi < phrases.length) result.push(phrases[pi++]);
+    if (pi < phrases.length) result.push(phrases[pi++]);
+  }
+  return result.slice(0, 16);
+}
 
 export default function LandingHero({ liveEvents = [] }: { liveEvents?: string[] }) {
-  // Mescla eventos reais com frases NFS, intercalando
   const allItems = buildFeed(liveEvents, NFS_PHRASES);
-
   const [index, setIndex] = useState(0);
-  const [visible, setVisible] = useState(true);
+  const [fading, setFading] = useState(false);
 
   useEffect(() => {
-    if (allItems.length === 0) return;
+    if (allItems.length <= 1) return;
 
-    const timer = setTimeout(async () => {
-      // Pisca N vezes antes de trocar
-      for (let i = 0; i < BLINK_CYCLES; i++) {
-        setVisible(false);
-        await sleep(BLINK_DURATION_MS);
-        setVisible(true);
-        await sleep(BLINK_DURATION_MS);
-      }
-      setVisible(false);
-      await sleep(BLINK_DURATION_MS);
-      setIndex((prev) => (prev + 1) % allItems.length);
-      setVisible(true);
-    }, DISPLAY_DURATION_MS);
+    const interval = setInterval(() => {
+      // Inicia o fade out
+      setFading(true);
 
-    return () => clearTimeout(timer);
-  }, [index, allItems.length]);
+      // Depois do fade out, troca o texto e faz fade in
+      setTimeout(() => {
+        setIndex((prev) => (prev + 1) % allItems.length);
+        setFading(false);
+      }, FADE_DURATION_MS);
+    }, VISIBLE_DURATION_MS + FADE_DURATION_MS);
+
+    return () => clearInterval(interval);
+  }, [allItems.length]);
 
   const currentItem = allItems[index] ?? "";
-  const isEvent = index < liveEvents.length * 2 && liveEvents.length > 0;
+  const isEvent = liveEvents.includes(currentItem);
 
   return (
     <div className="relative flex-1 min-h-screen overflow-hidden bg-asphalt flex items-center justify-center">
@@ -104,27 +109,25 @@ export default function LandingHero({ liveEvents = [] }: { liveEvents?: string[]
           SSR — STREET SERIES
         </div>
 
-        {/* Feed animado estilo terminal */}
+        {/* Feed animado com fade suave */}
         {allItems.length > 0 && (
           <div
-            className="mt-8 h-8 flex items-center justify-center opacity-0 animate-fade-in-up"
+            className="mt-8 opacity-0 animate-fade-in-up"
             style={{ animationDelay: "0.55s" }}
           >
             <div
-              className="flex items-center gap-2 px-4 py-1.5 border border-asphalt-border rounded-sm bg-asphalt-panel/60"
               style={{
-                transition: `opacity ${BLINK_DURATION_MS}ms step-end`,
-                opacity: visible ? 1 : 0,
+                transition: `opacity ${FADE_DURATION_MS}ms ease-in-out`,
+                opacity: fading ? 0 : 1,
               }}
+              className="flex items-center justify-center gap-2"
             >
               {isEvent && (
                 <span className="w-1.5 h-1.5 rounded-full bg-checkpoint shrink-0 animate-pulse" />
               )}
-              <span className="font-mono text-[11px] text-ink-muted max-w-[260px] sm:max-w-xs truncate">
+              <span className="font-mono text-xs text-ink-faint max-w-[280px] sm:max-w-sm text-center">
                 {currentItem}
               </span>
-              {/* Cursor piscante estilo terminal */}
-              <span className="font-mono text-[11px] text-ember animate-pulse select-none">▮</span>
             </div>
           </div>
         )}
@@ -145,43 +148,4 @@ export default function LandingHero({ liveEvents = [] }: { liveEvents?: string[]
       </div>
     </div>
   );
-}
-
-// Intercala eventos reais com frases NFS pra o feed não ficar
-// só de frases quando não há atividade, nem só de eventos quando há muitos.
-function buildFeed(events: string[], phrases: string[]): string[] {
-  if (events.length === 0) return shuffleArray([...phrases]);
-
-  const result: string[] = [];
-  const shuffledPhrases = shuffleArray([...phrases]);
-  const maxItems = Math.min(events.length + shuffledPhrases.length, 14);
-  let ei = 0;
-  let pi = 0;
-
-  while (result.length < maxItems) {
-    // Alterna: 1 evento, 1 frase, 1 evento, 2 frases...
-    if (ei < events.length) {
-      result.push(events[ei++]);
-    }
-    if (pi < shuffledPhrases.length && result.length < maxItems) {
-      result.push(shuffledPhrases[pi++]);
-    }
-    if (pi < shuffledPhrases.length && result.length < maxItems) {
-      result.push(shuffledPhrases[pi++]);
-    }
-  }
-
-  return result;
-}
-
-function shuffleArray<T>(arr: T[]): T[] {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
 }
