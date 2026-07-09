@@ -94,9 +94,9 @@ export default function LandingHero({ liveEvents = [] }: { liveEvents?: string[]
         </div>
 
         <div
-          className="opacity-0 animate-fade-in-up w-full max-w-3xl"
-          style={{ animationDelay: "0.25s" }}
-        >
+  className="opacity-0 animate-fade-in-up w-full max-w-[95vw] sm:max-w-2xl"
+  style={{ animationDelay: "0.25s" }}
+>
           <Logo className="w-full h-auto" />
         </div>
 
