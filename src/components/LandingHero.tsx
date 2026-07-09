@@ -56,7 +56,7 @@ export default function LandingHero({ liveEvents = [] }: { liveEvents?: string[]
 
   return (
     <div className="relative flex-1 min-h-screen overflow-hidden bg-asphalt flex items-center justify-center">
-      {/* Textura de fundo: grid sutil, lembrando o piso de uma garagem */}
+      {/* Textura de fundo: grid sutil */}
       <div
         className="absolute inset-0 opacity-[0.035]"
         style={{
@@ -66,13 +66,13 @@ export default function LandingHero({ liveEvents = [] }: { liveEvents?: string[]
         aria-hidden="true"
       />
 
-      {/* Glow âmbar pulsante, centralizado atrás da logo */}
+      {/* Glow âmbar pulsante */}
       <div
         className="absolute w-[480px] h-[480px] rounded-full bg-ember/20 blur-[100px] animate-pulse-glow"
         aria-hidden="true"
       />
 
-      {/* Linha de luz horizontal varrendo lentamente, como um farol */}
+      {/* Linha de luz varrendo */}
       <div
         className="absolute inset-0 overflow-hidden pointer-events-none"
         aria-hidden="true"
@@ -80,8 +80,8 @@ export default function LandingHero({ liveEvents = [] }: { liveEvents?: string[]
         <div className="absolute top-1/2 left-[-50%] w-[60%] h-px bg-gradient-to-r from-transparent via-ember/60 to-transparent animate-sweep-light" />
       </div>
 
-      {/* Conteúdo central */}
-      <div className="relative z-10 flex flex-col items-center text-center px-3">
+      {/* Conteúdo central — sem px pra logo poder ocupar largura total */}
+      <div className="relative z-10 flex flex-col items-center text-center w-full">
         <div
           className="flex items-center gap-2 mb-6 opacity-0 animate-fade-in-up"
           style={{ animationDelay: "0.1s" }}
@@ -93,17 +93,18 @@ export default function LandingHero({ liveEvents = [] }: { liveEvents?: string[]
           <span className="h-px w-10 bg-ember" />
         </div>
 
+        {/* Logo — largura fixa em px, estável entre SSR e cliente */}
         <div
-  className="opacity-0 animate-fade-in-up w-full max-w-[95vw] sm:max-w-2xl"
-  style={{ animationDelay: "0.25s" }}
->
+          className="opacity-0 animate-fade-in-up w-[340px] sm:w-[480px] lg:w-[600px]"
+          style={{ animationDelay: "0.25s" }}
+        >
           <Logo className="w-full h-auto" />
         </div>
 
-        {/* Feed animado — substitui o parágrafo de descrição estático */}
+        {/* Feed animado */}
         {allItems.length > 0 && (
           <div
-            className="mt-8 opacity-0 animate-fade-in-up px-4"
+            className="mt-8 opacity-0 animate-fade-in-up px-6"
             style={{ animationDelay: "0.55s" }}
           >
             <div
