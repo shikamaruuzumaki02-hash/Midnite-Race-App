@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Logo from "@/components/Logo";
 
 const NFS_PHRASES = [
   "A noite pertence aos que ousam.",
@@ -55,7 +56,7 @@ export default function LandingHero({ liveEvents = [] }: { liveEvents?: string[]
 
   return (
     <div className="relative flex-1 min-h-screen overflow-hidden bg-asphalt flex items-center justify-center">
-      {/* Textura de fundo: grid sutil */}
+      {/* Textura de fundo: grid sutil, lembrando o piso de uma garagem */}
       <div
         className="absolute inset-0 opacity-[0.035]"
         style={{
@@ -65,13 +66,13 @@ export default function LandingHero({ liveEvents = [] }: { liveEvents?: string[]
         aria-hidden="true"
       />
 
-      {/* Glow âmbar pulsante */}
+      {/* Glow âmbar pulsante, centralizado atrás da logo */}
       <div
         className="absolute w-[480px] h-[480px] rounded-full bg-ember/20 blur-[100px] animate-pulse-glow"
         aria-hidden="true"
       />
 
-      {/* Linha de luz varrendo */}
+      {/* Linha de luz horizontal varrendo lentamente, como um farol */}
       <div
         className="absolute inset-0 overflow-hidden pointer-events-none"
         aria-hidden="true"
@@ -80,9 +81,9 @@ export default function LandingHero({ liveEvents = [] }: { liveEvents?: string[]
       </div>
 
       {/* Conteúdo central */}
-      <div className="relative z-10 flex flex-col items-center text-center px-6">
+      <div className="relative z-10 flex flex-col items-center text-center px-3">
         <div
-          className="flex items-center gap-2 mb-4 opacity-0 animate-fade-in-up"
+          className="flex items-center gap-2 mb-6 opacity-0 animate-fade-in-up"
           style={{ animationDelay: "0.1s" }}
         >
           <span className="h-px w-10 bg-ember" />
@@ -92,24 +93,17 @@ export default function LandingHero({ liveEvents = [] }: { liveEvents?: string[]
           <span className="h-px w-10 bg-ember" />
         </div>
 
-        <h1
-          className="font-display text-5xl sm:text-6xl lg:text-7xl leading-none tracking-wider text-ink opacity-0 animate-fade-in-up"
+        <div
+          className="opacity-0 animate-fade-in-up w-full max-w-3xl"
           style={{ animationDelay: "0.25s" }}
         >
-          MIDNITE<span className="text-ember">BR</span>
-        </h1>
-
-        <div
-          className="font-mono text-xs sm:text-sm tracking-[0.35em] text-ink-faint mt-3 opacity-0 animate-fade-in-up"
-          style={{ animationDelay: "0.4s" }}
-        >
-          SSR — STREET SERIES
+          <Logo className="w-full h-auto" />
         </div>
 
-        {/* Feed animado */}
+        {/* Feed animado — substitui o parágrafo de descrição estático */}
         {allItems.length > 0 && (
           <div
-            className="mt-10 opacity-0 animate-fade-in-up px-4"
+            className="mt-8 opacity-0 animate-fade-in-up px-4"
             style={{ animationDelay: "0.55s" }}
           >
             <div
@@ -140,10 +134,10 @@ export default function LandingHero({ liveEvents = [] }: { liveEvents?: string[]
         <button
           type="button"
           onClick={() => {
-            const btn = document.querySelector<HTMLButtonElement>(
+            const hamburgerButton = document.querySelector<HTMLButtonElement>(
               'button[aria-label="Abrir menu"]'
             );
-            btn?.click();
+            hamburgerButton?.click();
           }}
           className="lg:hidden mt-10 flex items-center gap-3 px-7 py-3 border border-ember/50 rounded-sm font-display text-sm tracking-[0.2em] text-ember opacity-0 animate-fade-in-up animate-pulse-glow"
           style={{ animationDelay: "0.7s" }}
