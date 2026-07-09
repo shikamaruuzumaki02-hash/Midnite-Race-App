@@ -18,6 +18,57 @@ interface GaragePhotoUploadProps {
   initialPhotos: GaragePhoto[];
 }
 
+// Redimensiona a imagem para no máximo maxDimension px em qualquer lado,
+// antes de enviar para o Supabase. Resolve o erro de memória ("insuficiência
+// de memória") causado por fotos de câmera moderna (12MP+) ou do Google
+// Fotos sendo processadas diretamente no canvas do navegador no Android.
+// Se a imagem já for pequena o suficiente, devolve o arquivo original.
+async function downscaleIfNeeded(file: File, maxDimension = 1920): Promise<File> {
+  return new Promise((resolve) => {
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+
+      const { naturalWidth: w, naturalHeight: h } = img;
+
+      if (w <= maxDimension && h <= maxDimension) {
+        resolve(file);
+        return;
+      }
+
+      const scale = Math.min(maxDimension / w, maxDimension / h);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(w * scale);
+      canvas.height = Math.round(h * scale);
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve(file);
+        return;
+      }
+
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) { resolve(file); return; }
+          resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+        },
+        'image/jpeg',
+        0.92
+      );
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(file); // Se falhar, tenta com o original
+    };
+
+    img.src = objectUrl;
+  });
+}
+
 export default function GaragePhotoUpload({
   garageId,
   userId,
@@ -48,12 +99,15 @@ export default function GaragePhotoUpload({
     const supabase = createClient();
     const existingPhoto = currentPhotos.find((p) => p.position === slot);
 
-    const fileExt = file.name.split('.').pop();
+    // Redimensiona antes de enviar, evitando erro de memória no Android
+    const processedFile = await downscaleIfNeeded(file);
+
+    const fileExt = processedFile.name.split('.').pop();
     const fileName = `${userId}/${garageId}-${slot}-${Date.now()}.${fileExt}`;
 
     const { error: uploadError } = await supabase.storage
       .from('garage-photos')
-      .upload(fileName, file, { upsert: true });
+      .upload(fileName, processedFile, { upsert: true });
 
     if (uploadError) throw uploadError;
 
@@ -268,4 +322,4 @@ export default function GaragePhotoUpload({
       </div>
     </div>
   );
-      }
+}
