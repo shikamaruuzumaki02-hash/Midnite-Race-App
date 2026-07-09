@@ -40,10 +40,7 @@ export default function LandingHero({ liveEvents = [] }: { liveEvents?: string[]
     if (allItems.length <= 1) return;
 
     const interval = setInterval(() => {
-      // Inicia o fade out
       setFading(true);
-
-      // Depois do fade out, troca o texto e faz fade in
       setTimeout(() => {
         setIndex((prev) => (prev + 1) % allItems.length);
         setFading(false);
@@ -109,10 +106,10 @@ export default function LandingHero({ liveEvents = [] }: { liveEvents?: string[]
           SSR — STREET SERIES
         </div>
 
-        {/* Feed animado com fade suave */}
+        {/* Feed animado */}
         {allItems.length > 0 && (
           <div
-            className="mt-8 opacity-0 animate-fade-in-up"
+            className="mt-10 opacity-0 animate-fade-in-up px-4"
             style={{ animationDelay: "0.55s" }}
           >
             <div
@@ -120,14 +117,22 @@ export default function LandingHero({ liveEvents = [] }: { liveEvents?: string[]
                 transition: `opacity ${FADE_DURATION_MS}ms ease-in-out`,
                 opacity: fading ? 0 : 1,
               }}
-              className="flex items-center justify-center gap-2"
+              className="flex items-center justify-center gap-2.5"
             >
-              {isEvent && (
-                <span className="w-1.5 h-1.5 rounded-full bg-checkpoint shrink-0 animate-pulse" />
+              {isEvent ? (
+                <span className="w-2 h-2 rounded-full bg-checkpoint shrink-0 animate-pulse" />
+              ) : (
+                <span className="h-px w-6 bg-ember/60 shrink-0" />
               )}
-              <span className="font-mono text-xs text-ink-faint max-w-[280px] sm:max-w-sm text-center">
+              <span
+                className="font-display text-base sm:text-lg tracking-wide text-ink max-w-[300px] sm:max-w-sm text-center leading-snug"
+                style={{ textShadow: "0 0 24px rgba(255,90,31,0.25)" }}
+              >
                 {currentItem}
               </span>
+              {!isEvent && (
+                <span className="h-px w-6 bg-ember/60 shrink-0" />
+              )}
             </div>
           </div>
         )}
