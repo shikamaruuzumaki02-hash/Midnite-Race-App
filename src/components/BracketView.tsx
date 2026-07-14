@@ -1,10 +1,23 @@
-import { Trophy, Crown } from "lucide-react";
+import { Trophy, Flag } from "lucide-react";
 import { getRoundSequence } from "@/lib/bracket";
 import DriverAvatar from "@/components/DriverAvatar";
+import ChampionReveal from "@/components/ChampionReveal";
 import type { Match } from "@/types/database";
 
+function chunkPairs<T>(arr: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size));
+  }
+  return chunks;
+}
+
 /**
- * Visualização do bracket de mata-mata: rodadas lado a lado.
+ * Visualização do bracket de mata-mata: rodadas lado a lado, com linhas
+ * conectando os confrontos de uma rodada ao confronto seguinte que eles
+ * alimentam. A linha acende em ember quando os dois lados do confronto já
+ * têm vencedor definido (a "rota" está decidida); fica na cor neutra do
+ * tema enquanto o confronto está pendente.
  *
  * Por padrão tem scroll horizontal (pensado para celular). Quando usado
  * dentro de uma exportação de imagem (ExportableBracket), a prop
@@ -12,9 +25,9 @@ import type { Match } from "@/types/database";
  * total, para que a captura inclua todas as rodadas — mesmo as que
  * estariam fora da tela visível.
  *
- * Quando a Final já tem vencedor definido, uma coluna extra "Campeão" é
- * exibida ao final, mostrando apenas o piloto campeão. Essa coluna é
- * puramente visual — não corresponde a nenhuma partida real no banco.
+ * Quando a Final já tem vencedor definido, uma ficha de campeão ornamentada
+ * é exibida ao final. Essa ficha é puramente visual — não corresponde a
+ * nenhuma partida real no banco.
  */
 export default function BracketView({
   matches,
@@ -51,6 +64,10 @@ export default function BracketView({
     );
   }
 
+  const renderedRounds = roundOrder.filter(
+    (r) => (matchesByRound.get(r)?.length ?? 0) > 0
+  );
+
   const finalRoundName = roundOrder[roundOrder.length - 1];
   const finalMatches = matchesByRound.get(finalRoundName) ?? [];
   const finalMatch = finalMatches[0];
@@ -63,45 +80,60 @@ export default function BracketView({
 
   return (
     <div className={scrollable ? "overflow-x-auto pb-2 -mx-1" : "overflow-visible pb-2 -mx-1"}>
-      <div
-        className={`flex gap-4 px-1 ${scrollable ? "min-w-max" : "w-max"}`}
-      >
-        {roundOrder.map((roundName) => {
+      <div className={`flex items-stretch gap-6 px-1 ${scrollable ? "min-w-max" : "w-max"}`}>
+        {renderedRounds.map((roundName, roundIdx) => {
           const roundMatches = matchesByRound.get(roundName) ?? [];
-          if (roundMatches.length === 0) return null;
+          const isLastRound = roundIdx === renderedRounds.length - 1;
+          const hasNextColumn = !isLastRound;
+          const pairs = hasNextColumn
+            ? chunkPairs(roundMatches, 2)
+            : roundMatches.map((m) => [m]);
 
           return (
-            <div key={roundName} className="flex flex-col gap-3 w-56 shrink-0">
-              <h3 className="font-display text-xs tracking-wider text-ember text-center">
-                {roundName.toUpperCase()}
-              </h3>
-              <div className="flex flex-col gap-4 justify-around flex-1">
-                {roundMatches.map((m) => (
-                  <BracketMatchCard key={m.id} match={m} />
-                ))}
+            <div key={roundName} className="flex flex-col gap-2 w-56 shrink-0">
+              <div className="flex items-center justify-center gap-1.5 mb-1">
+                <Flag size={11} className="text-ember" />
+                <h3 className="font-display text-xs tracking-wider text-ember">
+                  {roundName.toUpperCase()}
+                </h3>
+              </div>
+              <div className="flex flex-col gap-6 justify-around flex-1">
+                {pairs.map((pair, pairIdx) => {
+                  const bothWinners = pair.every((m) => !!m.winner_id);
+                  const lineColor = bothWinners ? "#ff5a1f" : "#262629";
+
+                  return (
+                    <div key={pairIdx} className="relative flex flex-col gap-4">
+                      {pair.map((m) => (
+                        <div key={m.id} className="relative">
+                          <BracketMatchCard match={m} />
+                          {hasNextColumn && (
+                            <div
+                              className="absolute top-1/2 -right-6 w-6 h-px"
+                              style={{
+                                backgroundColor: m.winner_id ? "#ff5a1f" : "#262629",
+                              }}
+                            />
+                          )}
+                        </div>
+                      ))}
+                      {hasNextColumn && pair.length === 2 && (
+                        <div
+                          className="absolute -right-6 w-px"
+                          style={{ top: "25%", bottom: "25%", backgroundColor: lineColor }}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           );
         })}
 
         {champion && (
-          <div className="flex flex-col gap-3 w-56 shrink-0">
-            <h3 className="font-display text-xs tracking-wider text-checkpoint text-center">
-              CAMPEÃO
-            </h3>
-            <div className="flex flex-col justify-center flex-1">
-              <div className="bg-asphalt-panel border border-checkpoint/40 rounded-sm p-4 flex flex-col items-center gap-3 text-center">
-                <Crown size={20} className="text-checkpoint" />
-                <DriverAvatar
-                  gamertag={champion.gamertag}
-                  avatarUrl={champion.avatar_url}
-                  size="lg"
-                />
-                <span className="font-display text-lg font-semibold text-checkpoint leading-tight">
-                  {champion.gamertag}
-                </span>
-              </div>
-            </div>
+          <div className="flex flex-col justify-center shrink-0">
+            <ChampionReveal gamertag={champion.gamertag} avatarUrl={champion.avatar_url} />
           </div>
         )}
       </div>
@@ -113,7 +145,11 @@ function BracketMatchCard({ match }: { match: Match }) {
   const isCompleted = match.status === "COMPLETED" && !!match.winner_id;
 
   return (
-    <div className="bg-asphalt-panel border border-asphalt-border rounded-sm p-3">
+    <div
+      className={`bg-asphalt-panel border rounded-sm p-3 transition-colors ${
+        isCompleted ? "border-ember/20" : "border-asphalt-border"
+      }`}
+    >
       <PlayerLine
         name={match.driver_a?.gamertag ?? "A definir"}
         avatarUrl={match.driver_a?.avatar_url}
@@ -140,8 +176,8 @@ function PlayerLine({
 }) {
   return (
     <div
-      className={`flex items-center gap-2.5 ${
-        isWinner ? "text-checkpoint" : "text-ink-faint"
+      className={`flex items-center gap-2.5 pl-1.5 border-l-2 transition-colors ${
+        isWinner ? "text-checkpoint border-checkpoint" : "text-ink-faint border-transparent"
       }`}
     >
       <DriverAvatar gamertag={name} avatarUrl={avatarUrl} size="lg" />
