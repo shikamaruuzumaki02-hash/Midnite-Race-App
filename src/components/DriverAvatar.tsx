@@ -3,13 +3,14 @@
 type DriverAvatarProps = {
   gamertag: string;
   avatarUrl?: string | null;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
 };
 
 const SIZE_CLASSES: Record<string, string> = {
   sm: "w-7 h-7 text-[10px]",
   md: "w-10 h-10 text-xs",
   lg: "w-16 h-16 text-base",
+  xl: "w-20 h-20 text-lg",
 };
 
 const PALETTE = [
