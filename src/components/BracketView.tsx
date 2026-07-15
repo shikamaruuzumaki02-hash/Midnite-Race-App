@@ -6,11 +6,6 @@ import type { Match } from "@/types/database";
 const LINE_PENDING = "#4a4a52";
 const LINE_DECIDED = "#ff5a1f";
 
-// Contorno "rasgado" tipo adesivo de pichação arrancado — usado no selo
-// VS e no carimbo de vencedor, pra fugir da cara de forma geométrica limpa.
-const JAGGED_CLIP =
-  "polygon(0% 20%, 10% 8%, 22% 18%, 35% 4%, 48% 16%, 62% 2%, 75% 14%, 88% 5%, 100% 18%, 96% 45%, 100% 72%, 88% 85%, 75% 96%, 62% 84%, 48% 98%, 35% 86%, 22% 100%, 10% 88%, 0% 78%, 4% 50%)";
-
 const AVATAR_PALETTE = [
   "#ff5a1f",
   "#3ddc97",
@@ -315,34 +310,13 @@ function BracketMatchCard({ match }: { match: Match }) {
           isDecided={isDecided}
         />
 
-        {/* selo VS estilo adesivo de pichação rasgado */}
-        <div
-          className="absolute left-1/2 top-1/2 z-10 w-24 h-16"
-          style={{ transform: "translate(-50%, -50%) rotate(-9deg)" }}
-        >
-          <div className="absolute inset-0" style={{ clipPath: JAGGED_CLIP, backgroundColor: "#0a0a0c" }} />
-          <div
-            className="absolute inset-[3px]"
-            style={{
-              clipPath: JAGGED_CLIP,
-              background: "linear-gradient(135deg, #ff7a45, #ff5a1f)",
-              boxShadow: "0 0 14px rgba(255,90,31,0.7)",
-            }}
-          />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span
-              className="font-display text-lg font-extrabold uppercase"
-              style={{
-                color: "#0a0a0c",
-                transform: "skewX(-12deg)",
-                letterSpacing: "-0.03em",
-                WebkitTextStroke: "0.5px #0a0a0c",
-              }}
-            >
-              VS
-            </span>
-          </div>
-        </div>
+        {/* selo VS — imagem enviada */}
+        <img
+          src="/images/vs-badge.png"
+          alt="VS"
+          className="absolute left-1/2 top-1/2 z-10 w-28 h-auto -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none"
+          style={{ filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.6))" }}
+        />
       </div>
     </div>
   );
@@ -388,38 +362,12 @@ function PosterRow({
       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
 
       {isWinner && (
-        <div
-          className="absolute top-2 right-1 z-10 w-24 h-9"
-          style={{ transform: "rotate(-8deg)", filter: "drop-shadow(0 2px 5px rgba(0,0,0,0.7))" }}
-        >
-          <div className="absolute inset-0" style={{ clipPath: JAGGED_CLIP, backgroundColor: "#0a0a0c" }} />
-          <div
-            className="absolute inset-[2px]"
-            style={{ clipPath: JAGGED_CLIP, backgroundColor: "rgba(10,10,12,0.88)" }}
-          />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span
-              className="font-display text-[11px] font-extrabold uppercase"
-              style={{
-                color: "#ff5a1f",
-                transform: "skewX(-10deg)",
-                letterSpacing: "0.03em",
-                textShadow: "0 0 8px rgba(255,90,31,0.6)",
-              }}
-            >
-              Vencedor
-            </span>
-          </div>
-          {/* pingos de tinta escorrendo do carimbo */}
-          <div
-            className="absolute -bottom-1 left-4 w-1.5 h-2.5 bg-ember/70"
-            style={{ clipPath: "polygon(0 0, 100% 0, 50% 100%)" }}
-          />
-          <div
-            className="absolute -bottom-1.5 left-10 w-1 h-3 bg-ember/50"
-            style={{ clipPath: "polygon(0 0, 100% 0, 50% 100%)" }}
-          />
-        </div>
+        <img
+          src="/images/vencedor-badge.png"
+          alt="Vencedor"
+          className="absolute top-1 right-1 z-10 w-24 h-auto -rotate-6 pointer-events-none select-none"
+          style={{ filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.6))" }}
+        />
       )}
 
       <div className="absolute bottom-1.5 left-2.5 right-2.5 flex items-center justify-between gap-1.5">
