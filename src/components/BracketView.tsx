@@ -1,4 +1,4 @@
-import { Trophy, Flag, MapPin } from "lucide-react";
+import { Flag, MapPin } from "lucide-react";
 import { getRoundSequence } from "@/lib/bracket";
 import ChampionReveal from "@/components/ChampionReveal";
 import type { Match } from "@/types/database";
@@ -249,10 +249,28 @@ function BracketMatchCard({ match }: { match: Match }) {
 
   return (
     <div
-      className={`overflow-hidden rounded-sm border transition-colors ${
-        isDecided ? "border-ember/30" : "border-asphalt-borderLight"
+      className={`relative overflow-hidden rounded-sm border-2 transition-colors ${
+        isDecided ? "border-ember/50" : "border-asphalt-borderLight"
       }`}
+      style={{ boxShadow: "inset 0 0 24px rgba(0,0,0,0.65)" }}
     >
+      {/* rebites nos cantos, estilo placa de metal */}
+      {[
+        "top-1 left-1",
+        "top-1 right-1",
+        "bottom-1 left-1",
+        "bottom-1 right-1",
+      ].map((pos) => (
+        <div
+          key={pos}
+          className={`absolute z-20 w-1.5 h-1.5 rounded-full ${pos}`}
+          style={{
+            background: "radial-gradient(circle at 35% 35%, #4a4a52, #16161a)",
+            boxShadow: "0 0 0 1px rgba(0,0,0,0.5)",
+          }}
+        />
+      ))}
+
       {/* tarja de identidade do card */}
       <div
         className="h-1 w-full opacity-70"
@@ -344,20 +362,23 @@ function PosterRow({
 
       {isWinner && (
         <div
-          className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-checkpoint"
-          style={{ boxShadow: "0 0 6px rgba(61,220,151,0.9)" }}
-        />
+          className="absolute top-2 right-2 -rotate-12 border-2 border-ember/80 rounded-sm px-2 py-0.5 bg-black/50"
+          style={{ boxShadow: "0 0 8px rgba(255,90,31,0.35)" }}
+        >
+          <span className="font-mono text-[9px] font-bold tracking-widest text-ember uppercase whitespace-nowrap">
+            Vencedor
+          </span>
+        </div>
       )}
 
       <div className="absolute bottom-1.5 left-2.5 right-2.5 flex items-center justify-between gap-1.5">
         <span
           className={`font-display text-base font-bold truncate leading-tight ${
-            isWinner ? "text-checkpoint" : eliminated ? "text-ink-dim line-through decoration-2" : "text-ink"
+            isWinner ? "text-ember" : eliminated ? "text-ink-dim line-through decoration-2" : "text-ink"
           }`}
         >
           {name}
         </span>
-        {isWinner && <Trophy size={15} className="text-checkpoint shrink-0" />}
       </div>
     </div>
   );
