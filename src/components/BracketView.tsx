@@ -271,14 +271,8 @@ function BracketMatchCard({ match }: { match: Match }) {
         />
       ))}
 
-      {/* tarja de identidade do card */}
-      <div
-        className="h-1 w-full opacity-70"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(45deg, #ff5a1f 0px, #ff5a1f 6px, transparent 6px, transparent 12px)",
-        }}
-      />
+      {/* barra de identidade do card — sólida, sem diagonal */}
+      <div className={`h-1.5 w-full ${isDecided ? "bg-ember" : "bg-asphalt-borderLight"}`} />
 
       {(trackName || timeLabel) && (
         <div className="flex items-center justify-between gap-2 px-2.5 py-1 bg-asphalt-card border-b border-asphalt-borderLight">
@@ -306,14 +300,8 @@ function BracketMatchCard({ match }: { match: Match }) {
             position="top"
           />
 
-          {/* tarja divisória entre os dois pilotos */}
-          <div
-            className="h-1 w-full relative z-0"
-            style={{
-              backgroundImage:
-                "repeating-linear-gradient(45deg, #ff5a1f 0px, #ff5a1f 6px, #0a0a0c 6px, #0a0a0c 12px)",
-            }}
-          />
+          {/* tarja divisória entre os dois pilotos — sólida */}
+          <div className="h-1.5 w-full relative z-0 bg-ember" />
 
           <PosterRow
             name={match.driver_b?.gamertag ?? "A definir"}
