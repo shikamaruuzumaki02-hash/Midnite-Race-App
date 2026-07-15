@@ -1,11 +1,36 @@
-import { Trophy, Flag } from "lucide-react";
+import { Trophy, Flag, MapPin } from "lucide-react";
 import { getRoundSequence } from "@/lib/bracket";
-import DriverAvatar from "@/components/DriverAvatar";
 import ChampionReveal from "@/components/ChampionReveal";
 import type { Match } from "@/types/database";
 
 const LINE_PENDING = "#4a4a52";
 const LINE_DECIDED = "#ff5a1f";
+
+const AVATAR_PALETTE = [
+  "#ff5a1f",
+  "#3ddc97",
+  "#4f8cff",
+  "#c44fff",
+  "#ffb84f",
+  "#ff4d6a",
+  "#4fd9ff",
+];
+
+function colorFromName(name: string) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
+}
+
+function initialsFromGamertag(gamertag: string) {
+  const cleaned = gamertag.trim();
+  if (!cleaned) return "?";
+  const parts = cleaned.split(/[\s_-]+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return cleaned.slice(0, 2).toUpperCase();
+}
 
 function chunkPairs<T>(arr: T[], size: number): T[][] {
   const chunks: T[][] = [];
@@ -15,19 +40,27 @@ function chunkPairs<T>(arr: T[], size: number): T[][] {
   return chunks;
 }
 
+function primaryTrackName(match: Match): string | null {
+  const tracks = match.match_tracks ?? [];
+  const sorted = [...tracks].sort((a, b) => a.position - b.position);
+  if (sorted.length > 0) return sorted[0].track?.name ?? null;
+  if (match.track) return match.track.name;
+  return null;
+}
+
 /**
  * Visualização do bracket de mata-mata: rodadas lado a lado, conectadas por
- * trilhas (linhas em ângulo reto, como um circuito). Cada trilha nasce no
- * meio de um confronto e termina na próxima fase — mesmo que essa próxima
- * fase ainda não tenha sido gerada no banco (a topologia da chave é sempre
- * conhecida a partir de `numPlayers`, então a trilha aparece desde já,
- * terminando em um nó "aguardando"). A trilha acende em ember quando o
- * confronto de origem já tem vencedor definido.
+ * trilhas em ângulo reto. Cada confronto é um "cartão de pôster" — foto
+ * cheia dos dois pilotos com o nome sobre um gradiente, selo "VS" entre
+ * eles, e o piloto eliminado perde a cor (preto e branco). A trilha acende
+ * em ember quando o confronto de origem já tem vencedor definido, e existe
+ * mesmo antes da próxima fase ser gerada — a topologia da chave é sempre
+ * conhecida a partir de `numPlayers`.
  *
  * Por padrão tem scroll horizontal (pensado para celular). Quando usado
  * dentro de uma exportação de imagem (ExportableBracket), a prop
  * `scrollable={false}` desativa o scroll e deixa o conteúdo na largura
- * total, para que a captura inclua todas as rodadas.
+ * total, para a captura incluir todas as rodadas.
  *
  * Quando a Final já tem vencedor definido, uma ficha de campeão ornamentada
  * é exibida ao final, conectada à Final pela mesma trilha.
@@ -81,7 +114,6 @@ export default function BracketView({
 
   return (
     <div className="relative">
-      {/* Ambiente sutil por trás da chave, pra não ficar chapado */}
       <div
         className="pointer-events-none absolute inset-0 -z-10 opacity-30"
         style={{
@@ -101,7 +133,7 @@ export default function BracketView({
               : roundMatches.map((m) => [m]);
 
             return (
-              <div key={roundName} className="flex flex-col gap-3 w-56 shrink-0">
+              <div key={roundName} className="flex flex-col gap-3 w-64 shrink-0">
                 <div className="self-center inline-flex items-center gap-1.5 px-3 py-1 rounded-sm bg-ember/15 border border-ember/30">
                   <Flag size={11} className="text-ember" />
                   <h3 className="font-display text-xs tracking-wider text-ember">
@@ -122,24 +154,31 @@ export default function BracketView({
                             <div key={m.id} className="relative">
                               <BracketMatchCard match={m} />
 
-                              {/* trilha saindo do card até a linha vertical do par */}
                               {advancesToNextRound && (
                                 <div
                                   className="absolute top-1/2 -right-5 w-5 h-0.5 -translate-y-1/2 rounded-full"
-                                  style={{ backgroundColor: decided ? LINE_DECIDED : LINE_PENDING }}
+                                  style={{
+                                    backgroundColor: decided ? LINE_DECIDED : LINE_PENDING,
+                                    boxShadow: decided ? "0 0 6px rgba(255,90,31,0.6)" : "none",
+                                  }}
                                 />
                               )}
 
-                              {/* trilha da Final até a ficha de campeão */}
                               {isFinalRound && champion && (
                                 <>
                                   <div
                                     className="absolute top-1/2 -right-10 w-10 h-0.5 -translate-y-1/2 rounded-full"
-                                    style={{ backgroundColor: LINE_DECIDED }}
+                                    style={{
+                                      backgroundColor: LINE_DECIDED,
+                                      boxShadow: "0 0 6px rgba(255,90,31,0.6)",
+                                    }}
                                   />
                                   <div
                                     className="absolute top-1/2 -right-10 -translate-y-1/2 w-2 h-2 rounded-full"
-                                    style={{ backgroundColor: LINE_DECIDED }}
+                                    style={{
+                                      backgroundColor: LINE_DECIDED,
+                                      boxShadow: "0 0 6px rgba(255,90,31,0.8)",
+                                    }}
                                   />
                                 </>
                               )}
@@ -147,24 +186,33 @@ export default function BracketView({
                           );
                         })}
 
-                        {/* linha vertical ligando os dois confrontos do par */}
                         {advancesToNextRound && pair.length === 2 && (
                           <div
                             className="absolute -right-5 w-0.5 rounded-full"
-                            style={{ top: "25%", bottom: "25%", backgroundColor: vLineColor }}
+                            style={{
+                              top: "25%",
+                              bottom: "25%",
+                              backgroundColor: vLineColor,
+                              boxShadow: bothDecided ? "0 0 6px rgba(255,90,31,0.6)" : "none",
+                            }}
                           />
                         )}
 
-                        {/* trilha do par até a próxima fase (nó de destino) */}
                         {advancesToNextRound && pair.length === 2 && (
                           <>
                             <div
                               className="absolute top-1/2 -right-10 w-5 h-0.5 -translate-y-1/2 rounded-full"
-                              style={{ backgroundColor: vLineColor }}
+                              style={{
+                                backgroundColor: vLineColor,
+                                boxShadow: bothDecided ? "0 0 6px rgba(255,90,31,0.6)" : "none",
+                              }}
                             />
                             <div
                               className="absolute top-1/2 -right-10 -translate-y-1/2 w-2 h-2 rounded-full"
-                              style={{ backgroundColor: vLineColor }}
+                              style={{
+                                backgroundColor: vLineColor,
+                                boxShadow: bothDecided ? "0 0 6px rgba(255,90,31,0.8)" : "none",
+                              }}
                             />
                           </>
                         )}
@@ -189,31 +237,73 @@ export default function BracketView({
 
 function BracketMatchCard({ match }: { match: Match }) {
   const isDecided = match.status === "COMPLETED" && !!match.winner_id;
+  const trackName = primaryTrackName(match);
+  const timeLabel = match.scheduled_at
+    ? new Date(match.scheduled_at).toLocaleString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : null;
 
   return (
     <div
-      className={`overflow-hidden bg-asphalt-card border rounded-sm transition-colors ${
+      className={`overflow-hidden rounded-sm border transition-colors ${
         isDecided ? "border-ember/30" : "border-asphalt-borderLight"
       }`}
     >
-      <PlayerRow
-        name={match.driver_a?.gamertag ?? "A definir"}
-        avatarUrl={match.driver_a?.avatar_url}
-        isWinner={isDecided && match.winner_id === match.driver_a_id}
-        isDecided={isDecided}
+      {/* tarja de identidade do card */}
+      <div
+        className="h-1 w-full opacity-70"
+        style={{
+          backgroundImage:
+            "repeating-linear-gradient(45deg, #ff5a1f 0px, #ff5a1f 6px, transparent 6px, transparent 12px)",
+        }}
       />
-      <div className="h-px bg-asphalt-borderLight" />
-      <PlayerRow
-        name={match.driver_b?.gamertag ?? "A definir"}
-        avatarUrl={match.driver_b?.avatar_url}
-        isWinner={isDecided && match.winner_id === match.driver_b_id}
-        isDecided={isDecided}
-      />
+
+      {(trackName || timeLabel) && (
+        <div className="flex items-center justify-between gap-2 px-2.5 py-1 bg-asphalt-card border-b border-asphalt-borderLight">
+          <span className="flex items-center gap-1 font-mono text-[9px] text-ink-faint truncate">
+            {trackName && (
+              <>
+                <MapPin size={9} className="text-ember shrink-0" />
+                <span className="truncate">{trackName}</span>
+              </>
+            )}
+          </span>
+          {timeLabel && (
+            <span className="font-mono text-[9px] text-ink-faint shrink-0">{timeLabel}</span>
+          )}
+        </div>
+      )}
+
+      <div className="relative bg-asphalt-card">
+        <PosterRow
+          name={match.driver_a?.gamertag ?? "A definir"}
+          avatarUrl={match.driver_a?.avatar_url}
+          isWinner={isDecided && match.winner_id === match.driver_a_id}
+          isDecided={isDecided}
+        />
+        <PosterRow
+          name={match.driver_b?.gamertag ?? "A definir"}
+          avatarUrl={match.driver_b?.avatar_url}
+          isWinner={isDecided && match.winner_id === match.driver_b_id}
+          isDecided={isDecided}
+        />
+
+        {/* selo VS na costura entre os dois pilotos */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-7 h-7 rotate-45 bg-asphalt-panel border border-ember/50">
+          <span className="-rotate-45 font-mono text-[9px] text-ember font-bold tracking-tight">
+            VS
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
 
-function PlayerRow({
+function PosterRow({
   name,
   avatarUrl,
   isWinner,
@@ -224,26 +314,50 @@ function PlayerRow({
   isWinner: boolean;
   isDecided: boolean;
 }) {
-  // Antes de jogar: nome bem legível (texto normal do tema).
-  // Venceu: verde de destaque, fundo levemente realçado.
-  // Perdeu (já decidido e não é o vencedor): esmaecido e riscado — eliminado.
-  const textColor = !isDecided ? "text-ink" : isWinner ? "text-checkpoint" : "text-ink-dim";
+  const eliminated = isDecided && !isWinner;
+  const bgColor = colorFromName(name);
 
   return (
-    <div
-      className={`flex items-center gap-3 px-2.5 py-2 ${
-        isWinner ? "bg-checkpoint/[0.06]" : ""
-      }`}
-    >
-      <DriverAvatar gamertag={name} avatarUrl={avatarUrl} size="xl" />
-      <span
-        className={`font-display text-base font-semibold truncate flex-1 leading-tight ${textColor} ${
-          isDecided && !isWinner ? "line-through decoration-1 opacity-60" : ""
-        }`}
-      >
-        {name}
-      </span>
-      {isWinner && <Trophy size={15} className="shrink-0 text-checkpoint" />}
+    <div className="relative h-24 overflow-hidden">
+      {avatarUrl ? (
+        <img
+          src={avatarUrl}
+          alt={name}
+          crossOrigin="anonymous"
+          className={`w-full h-full object-cover transition-all ${
+            eliminated ? "grayscale brightness-[0.4]" : ""
+          }`}
+        />
+      ) : (
+        <div
+          className={`w-full h-full flex items-center justify-center font-display text-3xl font-bold transition-all ${
+            eliminated ? "grayscale brightness-[0.4]" : ""
+          }`}
+          style={{ backgroundColor: `${bgColor}22`, color: bgColor }}
+        >
+          {initialsFromGamertag(name)}
+        </div>
+      )}
+
+      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
+
+      {isWinner && (
+        <div
+          className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-checkpoint"
+          style={{ boxShadow: "0 0 6px rgba(61,220,151,0.9)" }}
+        />
+      )}
+
+      <div className="absolute bottom-1.5 left-2.5 right-2.5 flex items-center justify-between gap-1.5">
+        <span
+          className={`font-display text-base font-bold truncate leading-tight ${
+            isWinner ? "text-checkpoint" : eliminated ? "text-ink-dim line-through decoration-2" : "text-ink"
+          }`}
+        >
+          {name}
+        </span>
+        {isWinner && <Trophy size={15} className="text-checkpoint shrink-0" />}
+      </div>
     </div>
   );
 }
