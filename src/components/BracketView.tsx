@@ -318,12 +318,13 @@ function PosterRow({
   const bgColor = colorFromName(name);
 
   return (
-    <div className="relative h-24 overflow-hidden">
+    <div className="relative h-44 overflow-hidden">
       {avatarUrl ? (
         <img
           src={avatarUrl}
           alt={name}
           crossOrigin="anonymous"
+          style={{ objectPosition: "50% 15%" }}
           className={`w-full h-full object-cover transition-all ${
             eliminated ? "grayscale brightness-[0.4]" : ""
           }`}
