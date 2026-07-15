@@ -302,19 +302,21 @@ function BracketMatchCard({ match }: { match: Match }) {
           avatarUrl={match.driver_a?.avatar_url}
           isWinner={isDecided && match.winner_id === match.driver_a_id}
           isDecided={isDecided}
+          position="top"
         />
         <PosterRow
           name={match.driver_b?.gamertag ?? "A definir"}
           avatarUrl={match.driver_b?.avatar_url}
           isWinner={isDecided && match.winner_id === match.driver_b_id}
           isDecided={isDecided}
+          position="bottom"
         />
 
         {/* selo VS — imagem enviada */}
         <img
           src="/images/vs-badge.png"
           alt="VS"
-          className="absolute left-1/2 top-1/2 z-10 w-28 h-auto -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none"
+          className="absolute left-1/2 top-1/2 z-10 w-16 h-auto -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none"
           style={{ filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.6))" }}
         />
       </div>
@@ -327,11 +329,13 @@ function PosterRow({
   avatarUrl,
   isWinner,
   isDecided,
+  position,
 }: {
   name: string;
   avatarUrl?: string | null;
   isWinner: boolean;
   isDecided: boolean;
+  position: "top" | "bottom";
 }) {
   const eliminated = isDecided && !isWinner;
   const bgColor = colorFromName(name);
@@ -365,7 +369,9 @@ function PosterRow({
         <img
           src="/images/vencedor-badge.png"
           alt="Vencedor"
-          className="absolute top-1 right-1 z-10 w-24 h-auto -rotate-6 pointer-events-none select-none"
+          className={`absolute right-1 z-10 w-14 h-auto pointer-events-none select-none ${
+            position === "top" ? "top-1 -rotate-6" : "bottom-1 rotate-6"
+          }`}
           style={{ filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.6))" }}
         />
       )}
