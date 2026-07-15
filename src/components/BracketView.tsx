@@ -249,28 +249,20 @@ function BracketMatchCard({ match }: { match: Match }) {
 
   return (
     <div
-      className={`relative overflow-hidden rounded-sm border-2 transition-colors ${
-        isDecided ? "border-ember/50" : "border-asphalt-borderLight"
-      }`}
-      style={{ boxShadow: "inset 0 0 24px rgba(0,0,0,0.65)" }}
+      className="relative overflow-hidden rounded-sm"
+      style={{
+        borderImageSource: "url(/images/metal-frame.png)",
+        borderImageSlice: 90, // ajuste conforme a espessura real da moldura no PNG
+        borderImageWidth: "18px", // espessura renderizada da moldura no card
+        borderImageOutset: "0px",
+        borderImageRepeat: "stretch",
+        borderStyle: "solid",
+        borderWidth: "18px",
+        boxShadow: isDecided
+          ? "inset 0 0 24px rgba(255,90,31,0.15)"
+          : "inset 0 0 24px rgba(0,0,0,0.65)",
+      }}
     >
-      {/* rebites nos cantos, estilo placa de metal */}
-      {[
-        "top-1 left-1",
-        "top-1 right-1",
-        "bottom-1 left-1",
-        "bottom-1 right-1",
-      ].map((pos) => (
-        <div
-          key={pos}
-          className={`absolute z-20 w-1.5 h-1.5 rounded-full ${pos}`}
-          style={{
-            background: "radial-gradient(circle at 35% 35%, #4a4a52, #16161a)",
-            boxShadow: "0 0 0 1px rgba(0,0,0,0.5)",
-          }}
-        />
-      ))}
-
       {/* barra de identidade do card — sólida, sem diagonal */}
       <div className={`h-1.5 w-full ${isDecided ? "bg-ember" : "bg-asphalt-borderLight"}`} />
 
