@@ -304,6 +304,16 @@ function BracketMatchCard({ match }: { match: Match }) {
           isDecided={isDecided}
           position="top"
         />
+
+        {/* tarja divisória entre os dois pilotos */}
+        <div
+          className="h-1 w-full relative z-0"
+          style={{
+            backgroundImage:
+              "repeating-linear-gradient(45deg, #ff5a1f 0px, #ff5a1f 6px, #0a0a0c 6px, #0a0a0c 12px)",
+          }}
+        />
+
         <PosterRow
           name={match.driver_b?.gamertag ?? "A definir"}
           avatarUrl={match.driver_b?.avatar_url}
@@ -369,7 +379,7 @@ function PosterRow({
         <img
           src="/images/vencedor-badge.png"
           alt="Vencedor"
-          className={`absolute right-1 z-10 w-14 h-auto pointer-events-none select-none ${
+          className={`absolute right-1 z-10 w-20 h-auto pointer-events-none select-none ${
             position === "top" ? "top-1 -rotate-6" : "bottom-1 rotate-6"
           }`}
           style={{ filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.6))" }}
