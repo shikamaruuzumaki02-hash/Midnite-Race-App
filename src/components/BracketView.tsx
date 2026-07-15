@@ -6,6 +6,11 @@ import type { Match } from "@/types/database";
 const LINE_PENDING = "#4a4a52";
 const LINE_DECIDED = "#ff5a1f";
 
+// Contorno "rasgado" tipo adesivo de pichação arrancado — usado no selo
+// VS e no carimbo de vencedor, pra fugir da cara de forma geométrica limpa.
+const JAGGED_CLIP =
+  "polygon(0% 20%, 10% 8%, 22% 18%, 35% 4%, 48% 16%, 62% 2%, 75% 14%, 88% 5%, 100% 18%, 96% 45%, 100% 72%, 88% 85%, 75% 96%, 62% 84%, 48% 98%, 35% 86%, 22% 100%, 10% 88%, 0% 78%, 4% 50%)";
+
 const AVATAR_PALETTE = [
   "#ff5a1f",
   "#3ddc97",
@@ -310,29 +315,29 @@ function BracketMatchCard({ match }: { match: Match }) {
           isDecided={isDecided}
         />
 
-        {/* selo VS estilo emblema de impacto */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-16 h-16">
-          <div
-            className="absolute inset-0"
-            style={{
-              clipPath:
-                "polygon(50% 0%, 61% 31%, 93% 25%, 72% 50%, 93% 75%, 61% 69%, 50% 100%, 39% 69%, 7% 75%, 28% 50%, 7% 25%, 39% 31%)",
-              backgroundColor: "#0a0a0c",
-            }}
-          />
+        {/* selo VS estilo adesivo de pichação rasgado */}
+        <div
+          className="absolute left-1/2 top-1/2 z-10 w-24 h-16"
+          style={{ transform: "translate(-50%, -50%) rotate(-9deg)" }}
+        >
+          <div className="absolute inset-0" style={{ clipPath: JAGGED_CLIP, backgroundColor: "#0a0a0c" }} />
           <div
             className="absolute inset-[3px]"
             style={{
-              clipPath:
-                "polygon(50% 0%, 61% 31%, 93% 25%, 72% 50%, 93% 75%, 61% 69%, 50% 100%, 39% 69%, 7% 75%, 28% 50%, 7% 25%, 39% 31%)",
+              clipPath: JAGGED_CLIP,
               background: "linear-gradient(135deg, #ff7a45, #ff5a1f)",
               boxShadow: "0 0 14px rgba(255,90,31,0.7)",
             }}
           />
           <div className="absolute inset-0 flex items-center justify-center">
             <span
-              className="font-display text-sm font-extrabold tracking-tighter"
-              style={{ color: "#0a0a0c", transform: "rotate(-6deg)" }}
+              className="font-display text-lg font-extrabold uppercase"
+              style={{
+                color: "#0a0a0c",
+                transform: "skewX(-12deg)",
+                letterSpacing: "-0.03em",
+                WebkitTextStroke: "0.5px #0a0a0c",
+              }}
             >
               VS
             </span>
@@ -383,25 +388,37 @@ function PosterRow({
       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
 
       {isWinner && (
-        <div className="absolute top-2 right-2 -rotate-12" style={{ filter: "drop-shadow(0 2px 5px rgba(0,0,0,0.7))" }}>
+        <div
+          className="absolute top-2 right-1 z-10 w-24 h-9"
+          style={{ transform: "rotate(-8deg)", filter: "drop-shadow(0 2px 5px rgba(0,0,0,0.7))" }}
+        >
+          <div className="absolute inset-0" style={{ clipPath: JAGGED_CLIP, backgroundColor: "#0a0a0c" }} />
           <div
-            className="relative border-[3px] border-ember px-2.5 py-1 bg-black/60"
-            style={{ clipPath: "polygon(4% 0%, 96% 4%, 100% 96%, 2% 100%)" }}
-          >
+            className="absolute inset-[2px]"
+            style={{ clipPath: JAGGED_CLIP, backgroundColor: "rgba(10,10,12,0.88)" }}
+          />
+          <div className="absolute inset-0 flex items-center justify-center">
             <span
-              className="font-display text-[11px] font-extrabold tracking-[0.15em] text-ember uppercase whitespace-nowrap"
-              style={{ textShadow: "0 0 8px rgba(255,90,31,0.7)" }}
+              className="font-display text-[11px] font-extrabold uppercase"
+              style={{
+                color: "#ff5a1f",
+                transform: "skewX(-10deg)",
+                letterSpacing: "0.03em",
+                textShadow: "0 0 8px rgba(255,90,31,0.6)",
+              }}
             >
               Vencedor
             </span>
-            <div
-              className="pointer-events-none absolute inset-0 opacity-25"
-              style={{
-                backgroundImage: "radial-gradient(circle, #000 1px, transparent 1px)",
-                backgroundSize: "3px 3px",
-              }}
-            />
           </div>
+          {/* pingos de tinta escorrendo do carimbo */}
+          <div
+            className="absolute -bottom-1 left-4 w-1.5 h-2.5 bg-ember/70"
+            style={{ clipPath: "polygon(0 0, 100% 0, 50% 100%)" }}
+          />
+          <div
+            className="absolute -bottom-1.5 left-10 w-1 h-3 bg-ember/50"
+            style={{ clipPath: "polygon(0 0, 100% 0, 50% 100%)" }}
+          />
         </div>
       )}
 
