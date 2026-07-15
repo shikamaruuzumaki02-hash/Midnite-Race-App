@@ -253,11 +253,11 @@ function BracketMatchCard({ match }: { match: Match }) {
       style={{
         borderImageSource: "url(/images/metal-frame.png)",
         borderImageSlice: 90, // ajuste conforme a espessura real da moldura no PNG
-        borderImageWidth: "18px", // espessura renderizada da moldura no card
+        borderImageWidth: "10px", // espessura renderizada da moldura no card
         borderImageOutset: "0px",
         borderImageRepeat: "stretch",
         borderStyle: "solid",
-        borderWidth: "18px",
+        borderWidth: "10px",
         boxShadow: isDecided
           ? "inset 0 0 24px rgba(255,90,31,0.15)"
           : "inset 0 0 24px rgba(0,0,0,0.65)",
@@ -282,8 +282,8 @@ function BracketMatchCard({ match }: { match: Match }) {
         </div>
       )}
 
-      <div className="p-1.5 bg-asphalt-card">
-        <div className="relative overflow-hidden rounded-[2px] border border-asphalt-borderLight">
+      <div className="bg-asphalt-card">
+        <div className="relative overflow-hidden">
           <PosterRow
             name={match.driver_a?.gamertag ?? "A definir"}
             avatarUrl={match.driver_a?.avatar_url}
