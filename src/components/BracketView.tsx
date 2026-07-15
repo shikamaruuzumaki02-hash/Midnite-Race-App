@@ -296,39 +296,41 @@ function BracketMatchCard({ match }: { match: Match }) {
         </div>
       )}
 
-      <div className="relative bg-asphalt-card">
-        <PosterRow
-          name={match.driver_a?.gamertag ?? "A definir"}
-          avatarUrl={match.driver_a?.avatar_url}
-          isWinner={isDecided && match.winner_id === match.driver_a_id}
-          isDecided={isDecided}
-          position="top"
-        />
+      <div className="p-1.5 bg-asphalt-card">
+        <div className="relative overflow-hidden rounded-[2px] border border-asphalt-borderLight">
+          <PosterRow
+            name={match.driver_a?.gamertag ?? "A definir"}
+            avatarUrl={match.driver_a?.avatar_url}
+            isWinner={isDecided && match.winner_id === match.driver_a_id}
+            isDecided={isDecided}
+            position="top"
+          />
 
-        {/* tarja divisória entre os dois pilotos */}
-        <div
-          className="h-1 w-full relative z-0"
-          style={{
-            backgroundImage:
-              "repeating-linear-gradient(45deg, #ff5a1f 0px, #ff5a1f 6px, #0a0a0c 6px, #0a0a0c 12px)",
-          }}
-        />
+          {/* tarja divisória entre os dois pilotos */}
+          <div
+            className="h-1 w-full relative z-0"
+            style={{
+              backgroundImage:
+                "repeating-linear-gradient(45deg, #ff5a1f 0px, #ff5a1f 6px, #0a0a0c 6px, #0a0a0c 12px)",
+            }}
+          />
 
-        <PosterRow
-          name={match.driver_b?.gamertag ?? "A definir"}
-          avatarUrl={match.driver_b?.avatar_url}
-          isWinner={isDecided && match.winner_id === match.driver_b_id}
-          isDecided={isDecided}
-          position="bottom"
-        />
+          <PosterRow
+            name={match.driver_b?.gamertag ?? "A definir"}
+            avatarUrl={match.driver_b?.avatar_url}
+            isWinner={isDecided && match.winner_id === match.driver_b_id}
+            isDecided={isDecided}
+            position="bottom"
+          />
 
-        {/* selo VS — imagem enviada */}
-        <img
-          src="/images/vs-badge.png"
-          alt="VS"
-          className="absolute left-1/2 top-1/2 z-10 w-16 h-auto -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none"
-          style={{ filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.6))" }}
-        />
+          {/* selo VS — imagem enviada */}
+          <img
+            src="/images/vs-badge.png"
+            alt="VS"
+            className="absolute left-1/2 top-1/2 z-10 w-16 h-auto -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none"
+            style={{ filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.6))" }}
+          />
+        </div>
       </div>
     </div>
   );
