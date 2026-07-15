@@ -263,9 +263,6 @@ function BracketMatchCard({ match }: { match: Match }) {
           : "inset 0 0 24px rgba(0,0,0,0.65)",
       }}
     >
-      {/* barra de identidade do card — sólida, sem diagonal */}
-      <div className={`h-1.5 w-full ${isDecided ? "bg-ember" : "bg-asphalt-borderLight"}`} />
-
       {(trackName || timeLabel) && (
         <div className="flex items-center justify-between gap-2 px-2.5 py-1 bg-asphalt-card border-b border-asphalt-borderLight">
           <span className="flex items-center gap-1 font-mono text-[9px] text-ink-faint truncate">
