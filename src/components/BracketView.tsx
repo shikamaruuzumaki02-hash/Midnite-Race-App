@@ -310,11 +310,33 @@ function BracketMatchCard({ match }: { match: Match }) {
           isDecided={isDecided}
         />
 
-        {/* selo VS na costura entre os dois pilotos */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-7 h-7 rotate-45 bg-asphalt-panel border border-ember/50">
-          <span className="-rotate-45 font-mono text-[9px] text-ember font-bold tracking-tight">
-            VS
-          </span>
+        {/* selo VS estilo emblema de impacto */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-16 h-16">
+          <div
+            className="absolute inset-0"
+            style={{
+              clipPath:
+                "polygon(50% 0%, 61% 31%, 93% 25%, 72% 50%, 93% 75%, 61% 69%, 50% 100%, 39% 69%, 7% 75%, 28% 50%, 7% 25%, 39% 31%)",
+              backgroundColor: "#0a0a0c",
+            }}
+          />
+          <div
+            className="absolute inset-[3px]"
+            style={{
+              clipPath:
+                "polygon(50% 0%, 61% 31%, 93% 25%, 72% 50%, 93% 75%, 61% 69%, 50% 100%, 39% 69%, 7% 75%, 28% 50%, 7% 25%, 39% 31%)",
+              background: "linear-gradient(135deg, #ff7a45, #ff5a1f)",
+              boxShadow: "0 0 14px rgba(255,90,31,0.7)",
+            }}
+          />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span
+              className="font-display text-sm font-extrabold tracking-tighter"
+              style={{ color: "#0a0a0c", transform: "rotate(-6deg)" }}
+            >
+              VS
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -361,13 +383,25 @@ function PosterRow({
       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
 
       {isWinner && (
-        <div
-          className="absolute top-2 right-2 -rotate-12 border-2 border-ember/80 rounded-sm px-2 py-0.5 bg-black/50"
-          style={{ boxShadow: "0 0 8px rgba(255,90,31,0.35)" }}
-        >
-          <span className="font-mono text-[9px] font-bold tracking-widest text-ember uppercase whitespace-nowrap">
-            Vencedor
-          </span>
+        <div className="absolute top-2 right-2 -rotate-12" style={{ filter: "drop-shadow(0 2px 5px rgba(0,0,0,0.7))" }}>
+          <div
+            className="relative border-[3px] border-ember px-2.5 py-1 bg-black/60"
+            style={{ clipPath: "polygon(4% 0%, 96% 4%, 100% 96%, 2% 100%)" }}
+          >
+            <span
+              className="font-display text-[11px] font-extrabold tracking-[0.15em] text-ember uppercase whitespace-nowrap"
+              style={{ textShadow: "0 0 8px rgba(255,90,31,0.7)" }}
+            >
+              Vencedor
+            </span>
+            <div
+              className="pointer-events-none absolute inset-0 opacity-25"
+              style={{
+                backgroundImage: "radial-gradient(circle, #000 1px, transparent 1px)",
+                backgroundSize: "3px 3px",
+              }}
+            />
+          </div>
         </div>
       )}
 
