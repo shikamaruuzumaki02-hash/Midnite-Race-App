@@ -251,13 +251,6 @@ function BracketMatchCard({ match }: { match: Match }) {
     <div
       className="relative overflow-hidden rounded-sm"
       style={{
-        borderImageSource: "url(/images/metal-frame.png)",
-        borderImageSlice: 90, // ajuste conforme a espessura real da moldura no PNG
-        borderImageWidth: "10px", // espessura renderizada da moldura no card
-        borderImageOutset: "0px",
-        borderImageRepeat: "stretch",
-        borderStyle: "solid",
-        borderWidth: "10px",
         boxShadow: isDecided
           ? "inset 0 0 24px rgba(255,90,31,0.15)"
           : "inset 0 0 24px rgba(0,0,0,0.65)",
@@ -309,6 +302,21 @@ function BracketMatchCard({ match }: { match: Match }) {
           />
         </div>
       </div>
+
+      {/*
+        Moldura metálica sobreposta como <img> real (em vez de border-image
+        via CSS) — border-image não é capturado corretamente por bibliotecas
+        de exportação (html-to-image/html2canvas), que caem num border
+        padrão. Como <img>, o resultado é idêntico na tela e no export.
+        Centro do PNG é transparente, então o pôster aparece por baixo.
+      */}
+      <img
+        src="/images/metal-frame.png"
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 w-full h-full z-30 pointer-events-none select-none"
+        style={{ objectFit: "fill" }}
+      />
     </div>
   );
 }
