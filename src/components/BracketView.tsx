@@ -371,7 +371,7 @@ function PosterRow({
         <img
           src="/images/vencedor-badge.png"
           alt="Vencedor"
-          className={`absolute right-1 z-10 w-20 h-auto pointer-events-none select-none ${
+          className={`absolute right-4 z-10 w-20 h-auto pointer-events-none select-none ${
             position === "top" ? "top-1 -rotate-6" : "bottom-1 rotate-6"
           }`}
           style={{ filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.6))" }}
