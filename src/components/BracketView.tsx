@@ -1,4 +1,7 @@
-import { Flag, MapPin } from "lucide-react";
+"use client";
+
+import { useRef, useState, useEffect, useCallback } from "react";
+import { Flag, MapPin, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 import { getRoundSequence } from "@/lib/bracket";
 import ChampionReveal from "@/components/ChampionReveal";
 import type { Match } from "@/types/database";
@@ -15,6 +18,10 @@ const AVATAR_PALETTE = [
   "#ff4d6a",
   "#4fd9ff",
 ];
+
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 2.5;
+const ZOOM_STEP = 0.25;
 
 function colorFromName(name: string) {
   let hash = 0;
@@ -57,10 +64,12 @@ function primaryTrackName(match: Match): string | null {
  * mesmo antes da próxima fase ser gerada — a topologia da chave é sempre
  * conhecida a partir de `numPlayers`.
  *
- * Por padrão tem scroll horizontal (pensado para celular). Quando usado
- * dentro de uma exportação de imagem (ExportableBracket), a prop
- * `scrollable={false}` desativa o scroll e deixa o conteúdo na largura
- * total, para a captura incluir todas as rodadas.
+ * Por padrão tem scroll horizontal (pensado para celular) e, no desktop,
+ * controles de zoom (+/-/reset), zoom com Ctrl+roda do mouse e arrastar
+ * com o mouse para navegar. Quando usado dentro de uma exportação de
+ * imagem (ExportableBracket), a prop `scrollable={false}` desativa tudo
+ * isso e deixa o conteúdo na largura total, sem zoom, para a captura
+ * incluir todas as rodadas.
  *
  * Quando a Final já tem vencedor definido, uma ficha de campeão ornamentada
  * é exibida ao final, conectada à Final pela mesma trilha.
@@ -74,6 +83,80 @@ export default function BracketView({
   numPlayers: number;
   scrollable?: boolean;
 }) {
+  const [zoom, setZoom] = useState(1);
+  const [naturalSize, setNaturalSize] = useState({ width: 0, height: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const dragState = useRef({ startX: 0, startY: 0, scrollLeft: 0, scrollTop: 0, moved: false });
+
+  // Mede o tamanho "natural" (sem escala) do conteúdo pra calcular a área
+  // de scroll corretamente — transform: scale() não altera offsetWidth/Height,
+  // então o ResizeObserver sempre reporta o tamanho real, independente do zoom.
+  useEffect(() => {
+    if (!scrollable || !contentRef.current) return;
+    const el = contentRef.current;
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry) {
+        setNaturalSize({
+          width: entry.target.scrollWidth,
+          height: entry.target.scrollHeight,
+        });
+      }
+    });
+    observer.observe(el);
+    setNaturalSize({ width: el.scrollWidth, height: el.scrollHeight });
+    return () => observer.disconnect();
+  }, [scrollable, matches, numPlayers]);
+
+  const zoomIn = useCallback(() => {
+    setZoom((z) => Math.min(ZOOM_MAX, +(z + ZOOM_STEP).toFixed(2)));
+  }, []);
+
+  const zoomOut = useCallback(() => {
+    setZoom((z) => Math.max(ZOOM_MIN, +(z - ZOOM_STEP).toFixed(2)));
+  }, []);
+
+  const resetZoom = useCallback(() => {
+    setZoom(1);
+  }, []);
+
+  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    setZoom((z) => {
+      const next = e.deltaY < 0 ? z + ZOOM_STEP / 2 : z - ZOOM_STEP / 2;
+      return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, +next.toFixed(2)));
+    });
+  }, []);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!scrollRef.current) return;
+    dragState.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      scrollLeft: scrollRef.current.scrollLeft,
+      scrollTop: scrollRef.current.scrollTop,
+      moved: false,
+    };
+    setIsDragging(true);
+  }, []);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDragging || !scrollRef.current) return;
+    const dx = e.clientX - dragState.current.startX;
+    const dy = e.clientY - dragState.current.startY;
+    if (Math.abs(dx) > 2 || Math.abs(dy) > 2) dragState.current.moved = true;
+    scrollRef.current.scrollLeft = dragState.current.scrollLeft - dx;
+    scrollRef.current.scrollTop = dragState.current.scrollTop - dy;
+  }, [isDragging]);
+
+  const stopDragging = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
   let roundOrder: string[];
   try {
     roundOrder = getRoundSequence(numPlayers);
@@ -112,6 +195,118 @@ export default function BracketView({
         : finalMatch.driver_b
       : null;
 
+  const roundsContent = (
+    <>
+      {renderedRounds.map((roundName) => {
+        const roundMatches = matchesByRound.get(roundName) ?? [];
+        const advancesToNextRound = roundName !== trueFinalRoundName;
+        const isFinalRound = roundName === trueFinalRoundName;
+        const pairs = advancesToNextRound
+          ? chunkPairs(roundMatches, 2)
+          : roundMatches.map((m) => [m]);
+
+        return (
+          <div key={roundName} className="flex flex-col gap-3 w-64 shrink-0">
+            <div className="self-center inline-flex items-center gap-1.5 px-3 py-1 rounded-sm bg-ember/15 border border-ember/30">
+              <Flag size={11} className="text-ember" />
+              <h3 className="font-display text-xs tracking-wider text-ember">
+                {roundName.toUpperCase()}
+              </h3>
+            </div>
+
+            <div className="flex flex-col gap-6 justify-around flex-1">
+              {pairs.map((pair, pairIdx) => {
+                const bothDecided = pair.length === 2 && pair.every((m) => !!m.winner_id);
+                const vLineColor = bothDecided ? LINE_DECIDED : LINE_PENDING;
+
+                return (
+                  <div key={pairIdx} className="relative flex flex-col gap-6">
+                    {pair.map((m) => {
+                      const decided = !!m.winner_id;
+                      return (
+                        <div key={m.id} className="relative">
+                          <BracketMatchCard match={m} />
+
+                          {advancesToNextRound && (
+                            <div
+                              className="absolute top-1/2 -right-5 w-5 h-1 -translate-y-1/2 rounded-full transition-all duration-500"
+                              style={{
+                                backgroundColor: decided ? LINE_DECIDED : LINE_PENDING,
+                                boxShadow: decided ? "0 0 10px rgba(255,90,31,0.7)" : "none",
+                              }}
+                            />
+                          )}
+
+                          {isFinalRound && champion && (
+                            <>
+                              <div
+                                className="absolute top-1/2 -right-10 w-10 h-1 -translate-y-1/2 rounded-full transition-all duration-500"
+                                style={{
+                                  backgroundColor: LINE_DECIDED,
+                                  boxShadow: "0 0 10px rgba(255,90,31,0.7)",
+                                }}
+                              />
+                              <div
+                                className="absolute top-1/2 -right-10 -translate-y-1/2 w-2.5 h-2.5 rounded-full transition-all duration-500 animate-pulse"
+                                style={{
+                                  backgroundColor: LINE_DECIDED,
+                                  boxShadow: "0 0 10px rgba(255,90,31,0.9)",
+                                }}
+                              />
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {advancesToNextRound && pair.length === 2 && (
+                      <div
+                        className="absolute -right-5 w-1 rounded-full transition-all duration-500"
+                        style={{
+                          top: "25%",
+                          bottom: "25%",
+                          backgroundColor: vLineColor,
+                          boxShadow: bothDecided ? "0 0 10px rgba(255,90,31,0.7)" : "none",
+                        }}
+                      />
+                    )}
+
+                    {advancesToNextRound && pair.length === 2 && (
+                      <>
+                        <div
+                          className="absolute top-1/2 -right-10 w-5 h-1 -translate-y-1/2 rounded-full transition-all duration-500"
+                          style={{
+                            backgroundColor: vLineColor,
+                            boxShadow: bothDecided ? "0 0 10px rgba(255,90,31,0.7)" : "none",
+                          }}
+                        />
+                        <div
+                          className={`absolute top-1/2 -right-10 -translate-y-1/2 w-2.5 h-2.5 rounded-full transition-all duration-500 ${
+                            bothDecided ? "animate-pulse" : ""
+                          }`}
+                          style={{
+                            backgroundColor: vLineColor,
+                            boxShadow: bothDecided ? "0 0 10px rgba(255,90,31,0.9)" : "none",
+                          }}
+                        />
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+
+      {champion && (
+        <div className="flex flex-col justify-center shrink-0">
+          <ChampionReveal gamertag={champion.gamertag} avatarUrl={champion.avatar_url} />
+        </div>
+      )}
+    </>
+  );
+
   return (
     <div className="relative">
       <div
@@ -122,117 +317,76 @@ export default function BracketView({
         }}
       />
 
-      <div className={scrollable ? "overflow-x-auto pb-2 -mx-1" : "overflow-visible pb-2 -mx-1"}>
-        <div className={`flex items-stretch gap-10 px-1 ${scrollable ? "min-w-max" : "w-max"}`}>
-          {renderedRounds.map((roundName) => {
-            const roundMatches = matchesByRound.get(roundName) ?? [];
-            const advancesToNextRound = roundName !== trueFinalRoundName;
-            const isFinalRound = roundName === trueFinalRoundName;
-            const pairs = advancesToNextRound
-              ? chunkPairs(roundMatches, 2)
-              : roundMatches.map((m) => [m]);
-
-            return (
-              <div key={roundName} className="flex flex-col gap-3 w-64 shrink-0">
-                <div className="self-center inline-flex items-center gap-1.5 px-3 py-1 rounded-sm bg-ember/15 border border-ember/30">
-                  <Flag size={11} className="text-ember" />
-                  <h3 className="font-display text-xs tracking-wider text-ember">
-                    {roundName.toUpperCase()}
-                  </h3>
-                </div>
-
-                <div className="flex flex-col gap-6 justify-around flex-1">
-                  {pairs.map((pair, pairIdx) => {
-                    const bothDecided = pair.length === 2 && pair.every((m) => !!m.winner_id);
-                    const vLineColor = bothDecided ? LINE_DECIDED : LINE_PENDING;
-
-                    return (
-                      <div key={pairIdx} className="relative flex flex-col gap-6">
-                        {pair.map((m) => {
-                          const decided = !!m.winner_id;
-                          return (
-                            <div key={m.id} className="relative">
-                              <BracketMatchCard match={m} />
-
-                              {advancesToNextRound && (
-                                <div
-                                  className="absolute top-1/2 -right-5 w-5 h-1 -translate-y-1/2 rounded-full transition-all duration-500"
-                                  style={{
-                                    backgroundColor: decided ? LINE_DECIDED : LINE_PENDING,
-                                    boxShadow: decided ? "0 0 10px rgba(255,90,31,0.7)" : "none",
-                                  }}
-                                />
-                              )}
-
-                              {isFinalRound && champion && (
-                                <>
-                                  <div
-                                    className="absolute top-1/2 -right-10 w-10 h-1 -translate-y-1/2 rounded-full transition-all duration-500"
-                                    style={{
-                                      backgroundColor: LINE_DECIDED,
-                                      boxShadow: "0 0 10px rgba(255,90,31,0.7)",
-                                    }}
-                                  />
-                                  <div
-                                    className="absolute top-1/2 -right-10 -translate-y-1/2 w-2.5 h-2.5 rounded-full transition-all duration-500 animate-pulse"
-                                    style={{
-                                      backgroundColor: LINE_DECIDED,
-                                      boxShadow: "0 0 10px rgba(255,90,31,0.9)",
-                                    }}
-                                  />
-                                </>
-                              )}
-                            </div>
-                          );
-                        })}
-
-                        {advancesToNextRound && pair.length === 2 && (
-                          <div
-                            className="absolute -right-5 w-1 rounded-full transition-all duration-500"
-                            style={{
-                              top: "25%",
-                              bottom: "25%",
-                              backgroundColor: vLineColor,
-                              boxShadow: bothDecided ? "0 0 10px rgba(255,90,31,0.7)" : "none",
-                            }}
-                          />
-                        )}
-
-                        {advancesToNextRound && pair.length === 2 && (
-                          <>
-                            <div
-                              className="absolute top-1/2 -right-10 w-5 h-1 -translate-y-1/2 rounded-full transition-all duration-500"
-                              style={{
-                                backgroundColor: vLineColor,
-                                boxShadow: bothDecided ? "0 0 10px rgba(255,90,31,0.7)" : "none",
-                              }}
-                            />
-                            <div
-                              className={`absolute top-1/2 -right-10 -translate-y-1/2 w-2.5 h-2.5 rounded-full transition-all duration-500 ${
-                                bothDecided ? "animate-pulse" : ""
-                              }`}
-                              style={{
-                                backgroundColor: vLineColor,
-                                boxShadow: bothDecided ? "0 0 10px rgba(255,90,31,0.9)" : "none",
-                              }}
-                            />
-                          </>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-
-          {champion && (
-            <div className="flex flex-col justify-center shrink-0">
-              <ChampionReveal gamertag={champion.gamertag} avatarUrl={champion.avatar_url} />
-            </div>
-          )}
+      {scrollable && (
+        <div className="flex items-center justify-end gap-1 mb-2">
+          <button
+            type="button"
+            onClick={zoomOut}
+            aria-label="Diminuir zoom"
+            className="p-1.5 rounded-sm bg-asphalt-card border border-asphalt-borderLight text-ink-faint hover:text-ember hover:border-ember/50 transition-colors"
+          >
+            <ZoomOut size={14} />
+          </button>
+          <span className="font-mono text-[10px] text-ink-faint w-10 text-center select-none">
+            {Math.round(zoom * 100)}%
+          </span>
+          <button
+            type="button"
+            onClick={zoomIn}
+            aria-label="Aumentar zoom"
+            className="p-1.5 rounded-sm bg-asphalt-card border border-asphalt-borderLight text-ink-faint hover:text-ember hover:border-ember/50 transition-colors"
+          >
+            <ZoomIn size={14} />
+          </button>
+          <button
+            type="button"
+            onClick={resetZoom}
+            aria-label="Restaurar zoom"
+            className="p-1.5 rounded-sm bg-asphalt-card border border-asphalt-borderLight text-ink-faint hover:text-ember hover:border-ember/50 transition-colors"
+          >
+            <RotateCcw size={14} />
+          </button>
         </div>
-      </div>
+      )}
+
+      {scrollable ? (
+        <div
+          ref={scrollRef}
+          className="overflow-auto pb-2 -mx-1 select-none"
+          style={{ maxHeight: "70vh", cursor: isDragging ? "grabbing" : "grab" }}
+          onWheel={handleWheel}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={stopDragging}
+          onMouseLeave={stopDragging}
+        >
+          <div
+            style={{
+              width: naturalSize.width ? naturalSize.width * zoom : undefined,
+              height: naturalSize.height ? naturalSize.height * zoom : undefined,
+              position: "relative",
+            }}
+          >
+            <div
+              ref={contentRef}
+              className="flex items-stretch gap-10 px-1 min-w-max"
+              style={{
+                transform: `scale(${zoom})`,
+                transformOrigin: "top left",
+                position: "absolute",
+                top: 0,
+                left: 0,
+              }}
+            >
+              {roundsContent}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="overflow-visible pb-2 -mx-1">
+          <div className="flex items-stretch gap-10 px-1 w-max">{roundsContent}</div>
+        </div>
+      )}
     </div>
   );
 }
@@ -391,4 +545,4 @@ function PosterRow({
       </div>
     </div>
   );
-}
+                                  }
