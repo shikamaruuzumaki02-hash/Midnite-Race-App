@@ -273,8 +273,8 @@ function BracketMatchCard({ match }: { match: Match }) {
         </div>
       )}
 
-      <div className="bg-asphalt-card pt-[19px] pl-[17px] pr-[4px] pb-[21px] flex-1">
-        <div className="relative overflow-hidden h-full">
+      <div className="bg-asphalt-card pt-[19px] pl-[17px] pr-[4px] pb-[21px] flex-1 flex flex-col">
+        <div className="relative overflow-hidden flex-1 flex flex-col">
           <PosterRow
             name={match.driver_a?.gamertag ?? "A definir"}
             avatarUrl={match.driver_a?.avatar_url}
@@ -284,7 +284,7 @@ function BracketMatchCard({ match }: { match: Match }) {
           />
 
           {/* tarja divisória entre os dois pilotos — sólida */}
-          <div className="h-1.5 w-full relative z-0 bg-ember" />
+          <div className="h-1.5 w-full relative z-0 bg-ember shrink-0" />
 
           <PosterRow
             name={match.driver_b?.gamertag ?? "A definir"}
@@ -339,7 +339,7 @@ function PosterRow({
   const bgColor = colorFromName(name);
 
   return (
-    <div className="relative h-44 overflow-hidden">
+    <div className="relative flex-1 overflow-hidden">
       {avatarUrl ? (
         <img
           src={avatarUrl}
@@ -385,4 +385,4 @@ function PosterRow({
       </div>
     </div>
   );
-}
+    }
