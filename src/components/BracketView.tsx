@@ -156,10 +156,10 @@ export default function BracketView({
 
                               {advancesToNextRound && (
                                 <div
-                                  className="absolute top-1/2 -right-5 w-5 h-0.5 -translate-y-1/2 rounded-full"
+                                  className="absolute top-1/2 -right-5 w-5 h-1 -translate-y-1/2 rounded-full transition-all duration-500"
                                   style={{
                                     backgroundColor: decided ? LINE_DECIDED : LINE_PENDING,
-                                    boxShadow: decided ? "0 0 6px rgba(255,90,31,0.6)" : "none",
+                                    boxShadow: decided ? "0 0 10px rgba(255,90,31,0.7)" : "none",
                                   }}
                                 />
                               )}
@@ -167,17 +167,17 @@ export default function BracketView({
                               {isFinalRound && champion && (
                                 <>
                                   <div
-                                    className="absolute top-1/2 -right-10 w-10 h-0.5 -translate-y-1/2 rounded-full"
+                                    className="absolute top-1/2 -right-10 w-10 h-1 -translate-y-1/2 rounded-full transition-all duration-500"
                                     style={{
                                       backgroundColor: LINE_DECIDED,
-                                      boxShadow: "0 0 6px rgba(255,90,31,0.6)",
+                                      boxShadow: "0 0 10px rgba(255,90,31,0.7)",
                                     }}
                                   />
                                   <div
-                                    className="absolute top-1/2 -right-10 -translate-y-1/2 w-2 h-2 rounded-full"
+                                    className="absolute top-1/2 -right-10 -translate-y-1/2 w-2.5 h-2.5 rounded-full transition-all duration-500 animate-pulse"
                                     style={{
                                       backgroundColor: LINE_DECIDED,
-                                      boxShadow: "0 0 6px rgba(255,90,31,0.8)",
+                                      boxShadow: "0 0 10px rgba(255,90,31,0.9)",
                                     }}
                                   />
                                 </>
@@ -188,12 +188,12 @@ export default function BracketView({
 
                         {advancesToNextRound && pair.length === 2 && (
                           <div
-                            className="absolute -right-5 w-0.5 rounded-full"
+                            className="absolute -right-5 w-1 rounded-full transition-all duration-500"
                             style={{
                               top: "25%",
                               bottom: "25%",
                               backgroundColor: vLineColor,
-                              boxShadow: bothDecided ? "0 0 6px rgba(255,90,31,0.6)" : "none",
+                              boxShadow: bothDecided ? "0 0 10px rgba(255,90,31,0.7)" : "none",
                             }}
                           />
                         )}
@@ -201,17 +201,19 @@ export default function BracketView({
                         {advancesToNextRound && pair.length === 2 && (
                           <>
                             <div
-                              className="absolute top-1/2 -right-10 w-5 h-0.5 -translate-y-1/2 rounded-full"
+                              className="absolute top-1/2 -right-10 w-5 h-1 -translate-y-1/2 rounded-full transition-all duration-500"
                               style={{
                                 backgroundColor: vLineColor,
-                                boxShadow: bothDecided ? "0 0 6px rgba(255,90,31,0.6)" : "none",
+                                boxShadow: bothDecided ? "0 0 10px rgba(255,90,31,0.7)" : "none",
                               }}
                             />
                             <div
-                              className="absolute top-1/2 -right-10 -translate-y-1/2 w-2 h-2 rounded-full"
+                              className={`absolute top-1/2 -right-10 -translate-y-1/2 w-2.5 h-2.5 rounded-full transition-all duration-500 ${
+                                bothDecided ? "animate-pulse" : ""
+                              }`}
                               style={{
                                 backgroundColor: vLineColor,
-                                boxShadow: bothDecided ? "0 0 6px rgba(255,90,31,0.8)" : "none",
+                                boxShadow: bothDecided ? "0 0 10px rgba(255,90,31,0.9)" : "none",
                               }}
                             />
                           </>
@@ -249,8 +251,9 @@ function BracketMatchCard({ match }: { match: Match }) {
 
   return (
     <div
-      className="relative overflow-hidden rounded-sm"
+      className="relative overflow-hidden rounded-sm flex flex-col"
       style={{
+        aspectRatio: "9 / 16",
         boxShadow: isDecided
           ? "inset 0 0 24px rgba(255,90,31,0.15)"
           : "inset 0 0 24px rgba(0,0,0,0.65)",
@@ -272,8 +275,8 @@ function BracketMatchCard({ match }: { match: Match }) {
         </div>
       )}
 
-      <div className="bg-asphalt-card pt-[19px] pl-[17px] pr-[4px] pb-[21px]">
-        <div className="relative overflow-hidden">
+      <div className="bg-asphalt-card pt-[19px] pl-[17px] pr-[4px] pb-[21px] flex-1 flex flex-col">
+        <div className="relative overflow-hidden flex-1 flex flex-col">
           <PosterRow
             name={match.driver_a?.gamertag ?? "A definir"}
             avatarUrl={match.driver_a?.avatar_url}
@@ -283,7 +286,7 @@ function BracketMatchCard({ match }: { match: Match }) {
           />
 
           {/* tarja divisória entre os dois pilotos — sólida */}
-          <div className="h-1.5 w-full relative z-0 bg-ember" />
+          <div className="h-1.5 w-full relative z-0 bg-ember shrink-0" />
 
           <PosterRow
             name={match.driver_b?.gamertag ?? "A definir"}
@@ -309,11 +312,6 @@ function BracketMatchCard({ match }: { match: Match }) {
         de exportação (html-to-image/html2canvas), que caem num border
         padrão. Como <img>, o resultado é idêntico na tela e no export.
         Centro do PNG é transparente, então o pôster aparece por baixo.
-
-        O recuo do conteúdo (pt/pl/pr/pb acima) foi medido pixel a pixel na
-        janela interna real do metal-frame.png (canal alpha), convertido
-        para px considerando que o card cresce em altura ao ganhar esse
-        padding. Ajustar aqui se sobrar alguma fresta após teste visual.
       */}
       <img
         src="/images/metal-frame.png"
@@ -343,7 +341,7 @@ function PosterRow({
   const bgColor = colorFromName(name);
 
   return (
-    <div className="relative h-44 overflow-hidden">
+    <div className="relative flex-1 overflow-hidden">
       {avatarUrl ? (
         <img
           src={avatarUrl}
@@ -389,4 +387,4 @@ function PosterRow({
       </div>
     </div>
   );
-          }
+}
