@@ -49,7 +49,7 @@ export default async function TournamentPage({ params }: { params: { slug: strin
       <Sidebar tournaments={list} profile={profile} loggedIn={!!userId} />
 
       <main className="flex-1 min-w-0">
-        <div className="border-b border-asphalt-border bg-asphalt/80 backdrop-blur-sm sticky top-0 z-20">
+        <div className="border-b border-asphalt-border bg-asphalt/80 backdrop-blur-sm sticky top-0 z-40">
           <div className="px-6 lg:px-10 py-5 pl-16 lg:pl-10 max-w-6xl mx-auto flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2.5">
