@@ -249,8 +249,9 @@ function BracketMatchCard({ match }: { match: Match }) {
 
   return (
     <div
-      className="relative overflow-hidden rounded-sm"
+      className="relative overflow-hidden rounded-sm flex flex-col"
       style={{
+        aspectRatio: "9 / 16",
         boxShadow: isDecided
           ? "inset 0 0 24px rgba(255,90,31,0.15)"
           : "inset 0 0 24px rgba(0,0,0,0.65)",
@@ -272,8 +273,8 @@ function BracketMatchCard({ match }: { match: Match }) {
         </div>
       )}
 
-      <div className="bg-asphalt-card pt-[19px] pl-[17px] pr-[4px] pb-[21px]">
-        <div className="relative overflow-hidden">
+      <div className="bg-asphalt-card pt-[19px] pl-[17px] pr-[4px] pb-[21px] flex-1">
+        <div className="relative overflow-hidden h-full">
           <PosterRow
             name={match.driver_a?.gamertag ?? "A definir"}
             avatarUrl={match.driver_a?.avatar_url}
@@ -309,11 +310,6 @@ function BracketMatchCard({ match }: { match: Match }) {
         de exportação (html-to-image/html2canvas), que caem num border
         padrão. Como <img>, o resultado é idêntico na tela e no export.
         Centro do PNG é transparente, então o pôster aparece por baixo.
-
-        O recuo do conteúdo (pt/pl/pr/pb acima) foi medido pixel a pixel na
-        janela interna real do metal-frame.png (canal alpha), convertido
-        para px considerando que o card cresce em altura ao ganhar esse
-        padding. Ajustar aqui se sobrar alguma fresta após teste visual.
       */}
       <img
         src="/images/metal-frame.png"
