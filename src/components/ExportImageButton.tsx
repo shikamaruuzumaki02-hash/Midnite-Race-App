@@ -23,8 +23,6 @@ type StyleOverride = {
 function expandScrollableAncestors(node: HTMLElement): () => void {
   const overrides: StyleOverride[] = [];
 
-  // Expande o próprio elemento alvo e qualquer descendente com scroll
-  // horizontal (ex: a div com overflow-x-auto dentro do BracketView).
   const candidates = [node, ...Array.from(node.querySelectorAll<HTMLElement>("*"))];
 
   for (const el of candidates) {
@@ -79,26 +77,26 @@ export default function ExportImageButton({
     const restore = expandScrollableAncestors(node);
 
     try {
-      // Pequena espera para o navegador recalcular o layout após a
-      // mudança de estilo, antes de capturar.
-      await new Promise((r) => setTimeout(r, 50));
+      // Espera o navegador recalcular o layout inteiro (largura e,
+      // consequentemente, altura) após a expansão dos contêineres com
+      // scroll. Usar dois requestAnimationFrame garante que o reflow do
+      // navegador já terminou antes de medir e capturar.
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 
-      // Mede o tamanho real do conteúdo já expandido e passa isso
-      // explicitamente para o toPng: sem isso, a biblioteca calcula o
-      // tamanho do canvas sozinha e, por o elemento estar em
-      // position: fixed fora da tela, esse cálculo pode sair menor que
-      // o conteúdo real, cortando a lateral direita da imagem.
+      // Só fixamos a LARGURA explicitamente (era ela que causava o
+      // corte lateral). A altura fica livre ("auto"), medida já depois
+      // do reflow acima — forçá-la também estava espremendo o conteúdo,
+      // porque era medida antes do navegador recalcular a altura real
+      // gerada pela nova largura.
       const width = node.scrollWidth;
-      const height = node.scrollHeight;
 
       const dataUrl = await toPng(node, {
         backgroundColor: "#0a0a0c",
         pixelRatio: 2,
         width,
-        height,
         style: {
           width: `${width}px`,
-          height: `${height}px`,
+          height: "auto",
         },
       });
 
