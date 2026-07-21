@@ -385,4 +385,4 @@ function PosterRow({
       </div>
     </div>
   );
-    }
+}
