@@ -18,6 +18,14 @@ type StyleOverride = {
  * (como o bracket de mata-mata, com rodadas lado a lado), apenas a parte
  * visível na tela seria capturada, cortando o restante.
  *
+ * Importante: a detecção olha SOMENTE o overflow-x computado (auto/scroll).
+ * Não usamos mais "scrollWidth > clientWidth" como sinal auxiliar, porque
+ * isso também é verdadeiro para elementos com filhos posicionados via
+ * position:absolute que extrapolam a borda de propósito (como as linhas
+ * conectoras entre rodadas do bracket) — o que fazia essa função forçar
+ * larguras erradas em elementos que não têm nenhum scroll de verdade,
+ * distorcendo o layout exportado.
+ *
  * Devolve uma função de limpeza que restaura os estilos originais.
  */
 function expandScrollableAncestors(node: HTMLElement): () => void {
@@ -27,9 +35,7 @@ function expandScrollableAncestors(node: HTMLElement): () => void {
 
   for (const el of candidates) {
     const style = window.getComputedStyle(el);
-    const hasHorizontalScroll = el.scrollWidth > el.clientWidth;
-    const isScrollable =
-      style.overflowX === "auto" || style.overflowX === "scroll" || hasHorizontalScroll;
+    const isScrollable = style.overflowX === "auto" || style.overflowX === "scroll";
 
     if (isScrollable) {
       overrides.push({ element: el, overflow: el.style.overflow, width: el.style.width });
