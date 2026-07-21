@@ -251,9 +251,8 @@ function BracketMatchCard({ match }: { match: Match }) {
 
   return (
     <div
-      className="relative overflow-hidden rounded-sm flex flex-col"
+      className="relative overflow-hidden rounded-sm"
       style={{
-        aspectRatio: "9 / 16",
         boxShadow: isDecided
           ? "inset 0 0 24px rgba(255,90,31,0.15)"
           : "inset 0 0 24px rgba(0,0,0,0.65)",
@@ -275,8 +274,8 @@ function BracketMatchCard({ match }: { match: Match }) {
         </div>
       )}
 
-      <div className="bg-asphalt-card pt-[19px] pl-[17px] pr-[4px] pb-[21px] flex-1 flex flex-col">
-        <div className="relative overflow-hidden flex-1 flex flex-col">
+      <div className="bg-asphalt-card pt-[19px] pl-[17px] pr-[4px] pb-[21px]">
+        <div className="relative overflow-hidden">
           <PosterRow
             name={match.driver_a?.gamertag ?? "A definir"}
             avatarUrl={match.driver_a?.avatar_url}
@@ -286,7 +285,7 @@ function BracketMatchCard({ match }: { match: Match }) {
           />
 
           {/* tarja divisória entre os dois pilotos — sólida */}
-          <div className="h-1.5 w-full relative z-0 bg-ember shrink-0" />
+          <div className="h-1.5 w-full relative z-0 bg-ember" />
 
           <PosterRow
             name={match.driver_b?.gamertag ?? "A definir"}
@@ -312,6 +311,11 @@ function BracketMatchCard({ match }: { match: Match }) {
         de exportação (html-to-image/html2canvas), que caem num border
         padrão. Como <img>, o resultado é idêntico na tela e no export.
         Centro do PNG é transparente, então o pôster aparece por baixo.
+
+        O recuo do conteúdo (pt/pl/pr/pb acima) foi medido pixel a pixel na
+        janela interna real do metal-frame.png (canal alpha), convertido
+        para px considerando que o card cresce em altura ao ganhar esse
+        padding. Ajustar aqui se sobrar alguma fresta após teste visual.
       */}
       <img
         src="/images/metal-frame.png"
@@ -341,7 +345,7 @@ function PosterRow({
   const bgColor = colorFromName(name);
 
   return (
-    <div className="relative flex-1 overflow-hidden">
+    <div className="relative h-44 overflow-hidden">
       {avatarUrl ? (
         <img
           src={avatarUrl}
