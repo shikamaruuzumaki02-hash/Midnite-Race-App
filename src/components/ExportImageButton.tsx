@@ -83,9 +83,23 @@ export default function ExportImageButton({
       // mudança de estilo, antes de capturar.
       await new Promise((r) => setTimeout(r, 50));
 
+      // Mede o tamanho real do conteúdo já expandido e passa isso
+      // explicitamente para o toPng: sem isso, a biblioteca calcula o
+      // tamanho do canvas sozinha e, por o elemento estar em
+      // position: fixed fora da tela, esse cálculo pode sair menor que
+      // o conteúdo real, cortando a lateral direita da imagem.
+      const width = node.scrollWidth;
+      const height = node.scrollHeight;
+
       const dataUrl = await toPng(node, {
         backgroundColor: "#0a0a0c",
         pixelRatio: 2,
+        width,
+        height,
+        style: {
+          width: `${width}px`,
+          height: `${height}px`,
+        },
       });
 
       const link = document.createElement("a");
