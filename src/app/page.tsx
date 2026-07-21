@@ -22,8 +22,8 @@ export default async function LandingPage() {
         .select(`
           id,
           winner_id,
-          driver_a:drivers!matches_driver_a_id_fkey(gamertag),
-          driver_b:drivers!matches_driver_b_id_fkey(gamertag),
+          driver_a:drivers!matches_driver_a_id_fkey(id, gamertag),
+          driver_b:drivers!matches_driver_b_id_fkey(id, gamertag),
           track:tracks(name)
         `)
         .eq("status", "COMPLETED")
