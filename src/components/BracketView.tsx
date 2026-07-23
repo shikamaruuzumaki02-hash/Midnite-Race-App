@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect, useCallback } from "react";
+import { useRef, useState, useEffect, useLayoutEffect, useCallback } from "react";
 import { Flag, MapPin, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 import { getRoundSequence } from "@/lib/bracket";
 import ChampionReveal from "@/components/ChampionReveal";
@@ -22,6 +22,12 @@ const AVATAR_PALETTE = [
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 2.5;
 const ZOOM_STEP = 0.25;
+
+// Cantos chanfrados usados em todos os cards e no selo VS — o "corte diagonal"
+// que substitui o retângulo puro / moldura PNG antiga.
+const CARD_CHAMFER = "polygon(20px 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%, 0 20px)";
+const CHIP_CHAMFER = "polygon(0 0, 100% 0, 100% 100%, 5px 100%, 0 calc(100% - 5px))";
+const VS_CHAMFER = "polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px)";
 
 function colorFromName(name: string) {
   let hash = 0;
@@ -55,24 +61,28 @@ function primaryTrackName(match: Match): string | null {
   return null;
 }
 
+type ConnectorPath = { id: string; d: string; decided: boolean };
+
 /**
  * Visualização do bracket de mata-mata: rodadas lado a lado, conectadas por
- * trilhas em ângulo reto. Cada confronto é um "cartão de pôster" — foto
- * cheia dos dois pilotos com o nome sobre um gradiente, selo "VS" entre
- * eles, e o piloto eliminado perde a cor (preto e branco). A trilha acende
- * em ember quando o confronto de origem já tem vencedor definido, e existe
- * mesmo antes da próxima fase ser gerada — a topologia da chave é sempre
- * conhecida a partir de `numPlayers`.
+ * trilhas em curva orgânica (bezier), calculadas em runtime a partir da
+ * posição real de cada card na tela — não mais elbows de 90° fixos por CSS.
+ * Cada confronto é um card "banner": foto de cada piloto sangrando de um
+ * lado (com máscara em gradiente) e o nome grande sobre o fundo escuro do
+ * outro lado, um selo VS chanfrado na emenda entre os dois, e cantos
+ * chanfrados no lugar da moldura PNG antiga.
+ *
+ * A trilha acende em âmbar (e a própria borda do card ganha glow) quando o
+ * confronto de origem já tem vencedor definido. A trilha até a ficha de
+ * campeão usa a mesma lógica, então o visual é consistente do início ao fim
+ * do bracket.
  *
  * Por padrão tem scroll horizontal (pensado para celular) e, no desktop,
- * controles de zoom (+/-/reset), zoom com Ctrl+roda do mouse e arrastar
- * com o mouse para navegar. Quando usado dentro de uma exportação de
- * imagem (ExportableBracket), a prop `scrollable={false}` desativa tudo
- * isso e deixa o conteúdo na largura total, sem zoom, para a captura
- * incluir todas as rodadas.
- *
- * Quando a Final já tem vencedor definido, uma ficha de campeão ornamentada
- * é exibida ao final, conectada à Final pela mesma trilha.
+ * controles de zoom (+/-/reset), zoom com Ctrl+roda do mouse e arrastar com
+ * o mouse para navegar. Quando usado dentro de uma exportação de imagem
+ * (ExportableBracket), a prop `scrollable={false}` desativa tudo isso e
+ * deixa o conteúdo na largura total, sem zoom, para a captura incluir todas
+ * as rodadas — os conectores continuam funcionando normalmente nesse modo.
  */
 export default function BracketView({
   matches,
@@ -86,16 +96,19 @@ export default function BracketView({
   const [zoom, setZoom] = useState(1);
   const [naturalSize, setNaturalSize] = useState({ width: 0, height: 0 });
   const [isDragging, setIsDragging] = useState(false);
+  const [connectorPaths, setConnectorPaths] = useState<ConnectorPath[]>([]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const dragState = useRef({ startX: 0, startY: 0, scrollLeft: 0, scrollTop: 0, moved: false });
 
-  // Mede o tamanho "natural" (sem escala) do conteúdo pra calcular a área
-  // de scroll corretamente — transform: scale() não altera offsetWidth/Height,
-  // então o ResizeObserver sempre reporta o tamanho real, independente do zoom.
+  // Mede o tamanho "natural" (sem escala) do conteúdo — usado tanto pra
+  // calcular a área de scroll (modo scrollable) quanto pro tamanho do <svg>
+  // de conectores (nos dois modos). transform: scale() não altera
+  // offsetWidth/Height, então o ResizeObserver sempre reporta o tamanho
+  // real, independente do zoom.
   useEffect(() => {
-    if (!scrollable || !contentRef.current) return;
+    if (!contentRef.current) return;
     const el = contentRef.current;
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
@@ -109,7 +122,76 @@ export default function BracketView({
     observer.observe(el);
     setNaturalSize({ width: el.scrollWidth, height: el.scrollHeight });
     return () => observer.disconnect();
-  }, [scrollable, matches, numPlayers]);
+  }, [matches, numPlayers]);
+
+  // Recalcula os conectores a partir da posição real de cada card na tela.
+  // `contentRef` é o próprio elemento que recebe `transform: scale(zoom)`,
+  // então os retângulos filhos já vêm "escalados"; dividir por zoom
+  // devolve as coordenadas pro espaço natural (não-escalado) em que o
+  // <svg> é desenhado — como o <svg> é filho do mesmo elemento escalado,
+  // ele acompanha o zoom junto com os cards automaticamente.
+  const recomputeConnectors = useCallback(() => {
+    const root = contentRef.current;
+    if (!root) return;
+    const rootRect = root.getBoundingClientRect();
+
+    const toLocal = (rect: DOMRect, edge: "left" | "right") => {
+      const x = (edge === "right" ? rect.right : rect.left) - rootRect.left;
+      const y = rect.top + rect.height / 2 - rootRect.top;
+      return { x: x / zoom, y: y / zoom };
+    };
+
+    const seamRect = (card: HTMLElement) => {
+      const seam = card.querySelector<HTMLElement>("[data-match-seam]") ?? card;
+      return seam.getBoundingClientRect();
+    };
+
+    const bezier = (p1: { x: number; y: number }, p2: { x: number; y: number }) => {
+      const midX = (p1.x + p2.x) / 2;
+      return `M ${p1.x} ${p1.y} C ${midX} ${p1.y}, ${midX} ${p2.y}, ${p2.x} ${p2.y}`;
+    };
+
+    const roundEls = Array.from(root.querySelectorAll<HTMLElement>("[data-round]"));
+    const next: ConnectorPath[] = [];
+
+    for (let i = 0; i < roundEls.length - 1; i++) {
+      const cards = Array.from(roundEls[i].querySelectorAll<HTMLElement>("[data-match-card]"));
+      const nextCards = Array.from(roundEls[i + 1].querySelectorAll<HTMLElement>("[data-match-card]"));
+      cards.forEach((card, idx) => {
+        const target = nextCards[Math.floor(idx / 2)];
+        if (!target) return;
+        const p1 = toLocal(seamRect(card), "right");
+        const p2 = toLocal(seamRect(target), "left");
+        next.push({
+          id: `${i}-${idx}`,
+          d: bezier(p1, p2),
+          decided: card.dataset.decided === "true",
+        });
+      });
+    }
+
+    const championEl = root.querySelector<HTMLElement>("[data-champion]");
+    const lastRoundEl = roundEls[roundEls.length - 1];
+    if (championEl && lastRoundEl) {
+      const lastCard = lastRoundEl.querySelector<HTMLElement>("[data-match-card]");
+      if (lastCard && lastCard.dataset.decided === "true") {
+        const p1 = toLocal(seamRect(lastCard), "right");
+        const p2 = toLocal(championEl.getBoundingClientRect(), "left");
+        next.push({ id: "champion", d: bezier(p1, p2), decided: true });
+      }
+    }
+
+    setConnectorPaths(next);
+  }, [zoom]);
+
+  useLayoutEffect(() => {
+    recomputeConnectors();
+  }, [recomputeConnectors, matches, naturalSize]);
+
+  useEffect(() => {
+    window.addEventListener("resize", recomputeConnectors);
+    return () => window.removeEventListener("resize", recomputeConnectors);
+  }, [recomputeConnectors]);
 
   const zoomIn = useCallback(() => {
     setZoom((z) => Math.min(ZOOM_MAX, +(z + ZOOM_STEP).toFixed(2)));
@@ -199,112 +281,62 @@ export default function BracketView({
     <>
       {renderedRounds.map((roundName) => {
         const roundMatches = matchesByRound.get(roundName) ?? [];
-        const advancesToNextRound = roundName !== trueFinalRoundName;
-        const isFinalRound = roundName === trueFinalRoundName;
-        const pairs = advancesToNextRound
-          ? chunkPairs(roundMatches, 2)
-          : roundMatches.map((m) => [m]);
+        // Agrupar em pares aqui é só pra manter o espaçamento vertical
+        // alinhado entre rodadas — os conectores em si são calculados à
+        // parte, direto das posições reais no DOM (ver recomputeConnectors).
+        const pairs = chunkPairs(roundMatches, 2);
 
         return (
-          <div key={roundName} className="flex flex-col gap-3 w-64 shrink-0">
-            <div className="self-center inline-flex items-center gap-1.5 px-3 py-1 rounded-sm bg-ember/15 border border-ember/30">
+          <div key={roundName} data-round={roundName} className="flex flex-col gap-3 w-[19rem] shrink-0">
+            <div
+              className="self-center inline-flex items-center gap-1.5 px-3 py-1 bg-ember/10 border border-ember/30"
+              style={{ clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 100%, 10px 100%)" }}
+            >
               <Flag size={11} className="text-ember" />
-              <h3 className="font-display text-xs tracking-wider text-ember">
+              <h3 className="font-display text-xs tracking-wider text-ember uppercase">
                 {roundName.toUpperCase()}
               </h3>
             </div>
 
-            <div className="flex flex-col gap-6 justify-around flex-1">
-              {pairs.map((pair, pairIdx) => {
-                const bothDecided = pair.length === 2 && pair.every((m) => !!m.winner_id);
-                const vLineColor = bothDecided ? LINE_DECIDED : LINE_PENDING;
-
-                return (
-                  <div key={pairIdx} className="relative flex flex-col gap-6">
-                    {pair.map((m) => {
-                      const decided = !!m.winner_id;
-                      return (
-                        <div key={m.id} className="relative">
-                          <BracketMatchCard match={m} />
-
-                          {advancesToNextRound && (
-                            <div
-                              className="absolute top-1/2 -right-5 w-5 h-1 -translate-y-1/2 rounded-full transition-all duration-500"
-                              style={{
-                                backgroundColor: decided ? LINE_DECIDED : LINE_PENDING,
-                                boxShadow: decided ? "0 0 10px rgba(255,90,31,0.7)" : "none",
-                              }}
-                            />
-                          )}
-
-                          {isFinalRound && champion && (
-                            <>
-                              <div
-                                className="absolute top-1/2 -right-10 w-10 h-1 -translate-y-1/2 rounded-full transition-all duration-500"
-                                style={{
-                                  backgroundColor: LINE_DECIDED,
-                                  boxShadow: "0 0 10px rgba(255,90,31,0.7)",
-                                }}
-                              />
-                              <div
-                                className="absolute top-1/2 -right-10 -translate-y-1/2 w-2.5 h-2.5 rounded-full transition-all duration-500 animate-pulse"
-                                style={{
-                                  backgroundColor: LINE_DECIDED,
-                                  boxShadow: "0 0 10px rgba(255,90,31,0.9)",
-                                }}
-                              />
-                            </>
-                          )}
-                        </div>
-                      );
-                    })}
-
-                    {advancesToNextRound && pair.length === 2 && (
-                      <div
-                        className="absolute -right-5 w-1 rounded-full transition-all duration-500"
-                        style={{
-                          top: "25%",
-                          bottom: "25%",
-                          backgroundColor: vLineColor,
-                          boxShadow: bothDecided ? "0 0 10px rgba(255,90,31,0.7)" : "none",
-                        }}
-                      />
-                    )}
-
-                    {advancesToNextRound && pair.length === 2 && (
-                      <>
-                        <div
-                          className="absolute top-1/2 -right-10 w-5 h-1 -translate-y-1/2 rounded-full transition-all duration-500"
-                          style={{
-                            backgroundColor: vLineColor,
-                            boxShadow: bothDecided ? "0 0 10px rgba(255,90,31,0.7)" : "none",
-                          }}
-                        />
-                        <div
-                          className={`absolute top-1/2 -right-10 -translate-y-1/2 w-2.5 h-2.5 rounded-full transition-all duration-500 ${
-                            bothDecided ? "animate-pulse" : ""
-                          }`}
-                          style={{
-                            backgroundColor: vLineColor,
-                            boxShadow: bothDecided ? "0 0 10px rgba(255,90,31,0.9)" : "none",
-                          }}
-                        />
-                      </>
-                    )}
-                  </div>
-                );
-              })}
+            <div className="flex flex-col gap-7 justify-around flex-1">
+              {pairs.map((pair, pairIdx) => (
+                <div key={pairIdx} className="flex flex-col gap-7">
+                  {pair.map((m) => (
+                    <BracketMatchCard key={m.id} match={m} />
+                  ))}
+                </div>
+              ))}
             </div>
           </div>
         );
       })}
 
       {champion && (
-        <div className="flex flex-col justify-center shrink-0">
+        <div data-champion className="flex flex-col justify-center shrink-0">
           <ChampionReveal gamertag={champion.gamertag} avatarUrl={champion.avatar_url} />
         </div>
       )}
     </>
+  );
+
+  const connectorsSvg = (
+    <svg
+      className="pointer-events-none absolute inset-0 overflow-visible"
+      width={naturalSize.width || undefined}
+      height={naturalSize.height || undefined}
+    >
+      {connectorPaths.map((p) => (
+        <path
+          key={p.id}
+          d={p.d}
+          fill="none"
+          stroke={p.decided ? LINE_DECIDED : LINE_PENDING}
+          strokeWidth={p.decided ? 2.4 : 1.6}
+          strokeLinecap="round"
+          className="transition-[stroke] duration-500"
+        />
+      ))}
+    </svg>
   );
 
   return (
@@ -369,7 +401,7 @@ export default function BracketView({
           >
             <div
               ref={contentRef}
-              className="flex items-stretch gap-10 px-1 min-w-max"
+              className="relative flex items-stretch gap-10 px-1 min-w-max"
               style={{
                 transform: `scale(${zoom})`,
                 transformOrigin: "top left",
@@ -378,13 +410,17 @@ export default function BracketView({
                 left: 0,
               }}
             >
+              {connectorsSvg}
               {roundsContent}
             </div>
           </div>
         </div>
       ) : (
         <div className="overflow-visible pb-2 -mx-1">
-          <div className="flex items-stretch gap-10 px-1 w-max">{roundsContent}</div>
+          <div ref={contentRef} className="relative flex items-stretch gap-10 px-1 w-max">
+            {connectorsSvg}
+            {roundsContent}
+          </div>
         </div>
       )}
     </div>
@@ -405,15 +441,19 @@ function BracketMatchCard({ match }: { match: Match }) {
 
   return (
     <div
-      className="relative overflow-hidden rounded-sm"
+      data-match-card
+      data-decided={isDecided ? "true" : "false"}
+      className="relative bg-asphalt-card border transition-[box-shadow,border-color] duration-500"
       style={{
+        clipPath: CARD_CHAMFER,
+        borderColor: isDecided ? "rgba(255,90,31,0.5)" : undefined,
         boxShadow: isDecided
-          ? "inset 0 0 24px rgba(255,90,31,0.15)"
-          : "inset 0 0 24px rgba(0,0,0,0.65)",
+          ? "0 0 0 1px rgba(255,90,31,0.12), 0 0 18px rgba(255,90,31,0.10)"
+          : "none",
       }}
     >
       {(trackName || timeLabel) && (
-        <div className="flex items-center justify-between gap-2 px-2.5 py-1 bg-asphalt-card border-b border-asphalt-borderLight">
+        <div className="flex items-center justify-between gap-2 px-3 py-1.5 bg-asphalt-bg/60 border-b border-asphalt-borderLight">
           <span className="flex items-center gap-1 font-mono text-[9px] text-ink-faint truncate">
             {trackName && (
               <>
@@ -428,61 +468,57 @@ function BracketMatchCard({ match }: { match: Match }) {
         </div>
       )}
 
-      <div className="bg-asphalt-card pt-[19px] pl-[17px] pr-[4px] pb-[21px]">
-        <div className="relative overflow-hidden">
-          <PosterRow
-            name={match.driver_a?.gamertag ?? "A definir"}
-            avatarUrl={match.driver_a?.avatar_url}
-            isWinner={isDecided && match.winner_id === match.driver_a_id}
-            isDecided={isDecided}
-            position="top"
-          />
+      {/*
+        `data-match-seam` marca só as duas faixas dos pilotos (sem a barra
+        de pista/horário acima). É nesse elemento — não no card inteiro —
+        que os conectores miram, porque o centro geométrico do card inteiro
+        fica puxado pra baixo pela barra de meta, desalinhando a trilha em
+        relação à emenda visual onde o selo VS fica.
+      */}
+      <div data-match-seam className="relative">
+        <BannerRow
+          name={match.driver_a?.gamertag ?? "A definir"}
+          avatarUrl={match.driver_a?.avatar_url}
+          isWinner={isDecided && match.winner_id === match.driver_a_id}
+          isDecided={isDecided}
+          position="top"
+        />
 
-          {/* tarja divisória entre os dois pilotos — sólida */}
-          <div className="h-1.5 w-full relative z-0 bg-ember" />
+        <div
+          className="h-0.5 w-full transition-colors duration-500"
+          style={{ backgroundColor: isDecided ? LINE_DECIDED : "#3a3a40" }}
+        />
 
-          <PosterRow
-            name={match.driver_b?.gamertag ?? "A definir"}
-            avatarUrl={match.driver_b?.avatar_url}
-            isWinner={isDecided && match.winner_id === match.driver_b_id}
-            isDecided={isDecided}
-            position="bottom"
-          />
+        <BannerRow
+          name={match.driver_b?.gamertag ?? "A definir"}
+          avatarUrl={match.driver_b?.avatar_url}
+          isWinner={isDecided && match.winner_id === match.driver_b_id}
+          isDecided={isDecided}
+          position="bottom"
+        />
 
-          {/* selo VS — imagem enviada */}
-          <img
-            src="/images/vs-badge.png"
-            alt="VS"
-            className="absolute left-1/2 top-1/2 z-10 w-16 h-auto -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none"
-            style={{ filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.6))" }}
-          />
+        <div
+          className="absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 px-2.5 py-1"
+          style={{
+            background: "#0b0b0d",
+            border: `1.5px solid ${isDecided ? LINE_DECIDED : "#4a4a52"}`,
+            clipPath: VS_CHAMFER,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.7)",
+          }}
+        >
+          <span
+            className="font-display text-[11px] font-bold tracking-wide"
+            style={{ color: isDecided ? LINE_DECIDED : "#8a8a90" }}
+          >
+            VS
+          </span>
         </div>
       </div>
-
-      {/*
-        Moldura metálica sobreposta como <img> real (em vez de border-image
-        via CSS) — border-image não é capturado corretamente por bibliotecas
-        de exportação (html-to-image/html2canvas), que caem num border
-        padrão. Como <img>, o resultado é idêntico na tela e no export.
-        Centro do PNG é transparente, então o pôster aparece por baixo.
-
-        O recuo do conteúdo (pt/pl/pr/pb acima) foi medido pixel a pixel na
-        janela interna real do metal-frame.png (canal alpha), convertido
-        para px considerando que o card cresce em altura ao ganhar esse
-        padding. Ajustar aqui se sobrar alguma fresta após teste visual.
-      */}
-      <img
-        src="/images/metal-frame.png"
-        alt=""
-        aria-hidden="true"
-        className="absolute inset-0 w-full h-full z-30 pointer-events-none select-none"
-        style={{ objectFit: "fill" }}
-      />
     </div>
   );
 }
 
-function PosterRow({
+function BannerRow({
   name,
   avatarUrl,
   isWinner,
@@ -497,52 +533,79 @@ function PosterRow({
 }) {
   const eliminated = isDecided && !isWinner;
   const bgColor = colorFromName(name);
+  // A foto sangra de um lado e o nome fica no espaço escuro do outro —
+  // alternando entre as duas faixas do card pra criar o ritmo espelhado do
+  // formato "banner".
+  const photoOnLeft = position === "top";
 
   return (
-    <div className="relative h-44 overflow-hidden">
-      {avatarUrl ? (
-        <img
-          src={avatarUrl}
-          alt={name}
-          crossOrigin="anonymous"
-          style={{ objectPosition: "50% 15%" }}
-          className={`w-full h-full object-cover transition-all ${
-            eliminated ? "grayscale brightness-[0.4]" : ""
-          }`}
-        />
-      ) : (
-        <div
-          className={`w-full h-full flex items-center justify-center font-display text-3xl font-bold transition-all ${
-            eliminated ? "grayscale brightness-[0.4]" : ""
-          }`}
-          style={{ backgroundColor: `${bgColor}22`, color: bgColor }}
-        >
-          {initialsFromGamertag(name)}
-        </div>
-      )}
+    <div className="relative h-32 overflow-hidden">
+      <div
+        className={`absolute inset-y-0 w-3/5 ${photoOnLeft ? "left-0" : "right-0"}`}
+        style={{
+          WebkitMaskImage: `linear-gradient(to ${photoOnLeft ? "right" : "left"}, black 50%, transparent 97%)`,
+          maskImage: `linear-gradient(to ${photoOnLeft ? "right" : "left"}, black 50%, transparent 97%)`,
+        }}
+      >
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt={name}
+            crossOrigin="anonymous"
+            style={{ objectPosition: "50% 18%" }}
+            className={`w-full h-full object-cover transition-all ${
+              eliminated ? "grayscale brightness-[0.45]" : ""
+            }`}
+          />
+        ) : (
+          <div
+            className={`w-full h-full flex items-center justify-center font-display text-3xl font-bold transition-all ${
+              eliminated ? "grayscale brightness-[0.45]" : ""
+            }`}
+            style={{ backgroundColor: `${bgColor}22`, color: bgColor }}
+          >
+            {initialsFromGamertag(name)}
+          </div>
+        )}
+      </div>
 
-      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "linear-gradient(180deg, rgba(0,0,0,0.15), rgba(0,0,0,0.55) 70%, rgba(0,0,0,0.78))",
+        }}
+      />
 
       {isWinner && (
-        <img
-          src="/images/vencedor-badge.png"
-          alt="Vencedor"
-          className={`absolute right-4 z-10 w-20 h-auto pointer-events-none select-none ${
-            position === "top" ? "top-1 -rotate-6" : "bottom-1 rotate-6"
+        <span
+          className={`absolute z-10 flex items-center gap-1 px-2 py-0.5 font-display text-[9px] font-semibold uppercase tracking-wide text-black ${
+            position === "top" ? "top-2 left-3" : "bottom-2 right-3"
           }`}
-          style={{ filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.6))" }}
-        />
+          style={{ background: LINE_DECIDED, clipPath: CHIP_CHAMFER }}
+        >
+          <Flag size={8} />
+          Vencedor
+        </span>
       )}
 
-      <div className="absolute bottom-1.5 left-2.5 right-2.5 flex items-center justify-between gap-1.5">
+      <div
+        className={`absolute bottom-2 max-w-[56%] ${
+          photoOnLeft ? "right-3 text-right" : "left-3 text-left"
+        }`}
+      >
         <span
-          className={`font-display text-base font-bold truncate leading-tight ${
-            isWinner ? "text-ember" : eliminated ? "text-ink-dim line-through decoration-2" : "text-ink"
+          className={`block font-display text-2xl font-bold uppercase leading-none truncate ${
+            isWinner ? "" : eliminated ? "text-ink-dim line-through decoration-2" : "text-ink"
           }`}
+          style={{
+            color: isWinner ? LINE_DECIDED : undefined,
+            textShadow: "0 2px 10px rgba(0,0,0,0.8)",
+          }}
         >
           {name}
         </span>
       </div>
     </div>
   );
-                                  }
+}
