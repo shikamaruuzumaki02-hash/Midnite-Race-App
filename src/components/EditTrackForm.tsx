@@ -4,7 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Loader2, Save, X, Pencil } from "lucide-react";
-import type { Track } from "@/types/database";
+import type { Track, Mapa } from "@/types/database";
+
+const MAPAS: { value: Mapa; label: string }[] = [
+  { value: "twin_palms", label: "Twin Palms" },
+  { value: "mount_hidoro", label: "Mount Hidoro" },
+  { value: "snap", label: "S.N.A.P." },
+];
 
 export default function EditTrackForm({ track }: { track: Track }) {
   const router = useRouter();
@@ -14,6 +20,7 @@ export default function EditTrackForm({ track }: { track: Track }) {
   const [name, setName] = useState(track.name);
   const [type, setType] = useState(track.type ?? "");
   const [description, setDescription] = useState(track.description ?? "");
+  const [mapa, setMapa] = useState<Mapa>(track.mapa);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -21,6 +28,7 @@ export default function EditTrackForm({ track }: { track: Track }) {
     setName(track.name);
     setType(track.type ?? "");
     setDescription(track.description ?? "");
+    setMapa(track.mapa);
     setError(null);
     setEditing(false);
   }
@@ -36,6 +44,7 @@ export default function EditTrackForm({ track }: { track: Track }) {
         name,
         type: type || null,
         description: description || null,
+        mapa,
       })
       .eq("id", track.id);
 
@@ -73,6 +82,18 @@ export default function EditTrackForm({ track }: { track: Track }) {
         required
         className="w-full bg-asphalt-card border border-asphalt-border rounded-sm px-3 py-2.5 text-sm text-ink focus:outline-none focus:border-ember transition-colors"
       />
+      <select
+        value={mapa}
+        onChange={(e) => setMapa(e.target.value as Mapa)}
+        required
+        className="w-full bg-asphalt-card border border-asphalt-border rounded-sm px-3 py-2.5 text-sm text-ink focus:outline-none focus:border-ember transition-colors"
+      >
+        {MAPAS.map((m) => (
+          <option key={m.value} value={m.value}>
+            {m.label}
+          </option>
+        ))}
+      </select>
       <input
         type="text"
         value={type}
