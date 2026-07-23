@@ -2,6 +2,7 @@ export type Role = "VIEWER" | "ADMIN";
 export type TournamentFormat = "KNOCKOUT" | "LEAGUE";
 export type TournamentStatus = "UPCOMING" | "ONGOING" | "FINISHED";
 export type MatchStatus = "SCHEDULED" | "COMPLETED" | "WALKOVER" | "CANCELLED";
+export type Mapa = "twin_palms" | "mount_hidoro" | "snap";
 
 export interface Profile {
   id: string;
@@ -37,6 +38,7 @@ export interface Track {
   name: string;
   type: string | null;
   description: string | null;
+  mapa: Mapa;
 }
 
 export interface MatchTrack {
