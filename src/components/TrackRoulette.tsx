@@ -8,6 +8,9 @@ const SLICE_COLORS = ["#ff5a1f", "#1a1a1e"];
 
 const SPIN_DURATION_MS = 3200;
 
+const LABEL_RADIUS = 64;
+const CHAR_WIDTH_FACTOR = 0.58;
+
 const MAPA_FILTROS: { value: Mapa | "todos"; label: string }[] = [
   { value: "todos", label: "Todos" },
   { value: "twin_palms", label: "Twin Palms" },
@@ -29,6 +32,12 @@ export default function TrackRoulette({ tracks }: { tracks: Track[] }) {
 
   const sliceCount = filteredTracks.length;
   const sliceAngle = sliceCount > 0 ? 360 / sliceCount : 0;
+  const labelFontSize = sliceCount > 8 ? 6.5 : 8.5;
+  // Limite de caracteres calculado a partir do espaço real da fatia
+  // (corda do arco no raio do texto), não da contagem total de pistas —
+  // evita nomes vazando quando o filtro por mapa deixa poucas fatias
+  // largas mas com nomes longos.
+  const maxLabelChars = maxCharsForSlice(sliceAngle, LABEL_RADIUS, labelFontSize);
 
   function handleFiltroChange(value: Mapa | "todos") {
     if (spinning) return;
@@ -134,7 +143,7 @@ export default function TrackRoulette({ tracks }: { tracks: Track[] }) {
               const endAngle = startAngle + sliceAngle;
               const path = describeSlice(100, 100, 95, startAngle, endAngle);
               const labelAngle = startAngle + sliceAngle / 2;
-              const labelPos = polarToCartesian(100, 100, 64, labelAngle);
+              const labelPos = polarToCartesian(100, 100, LABEL_RADIUS, labelAngle);
 
               const isLeftHalf = labelAngle > 90 && labelAngle < 270;
               const textRotation = isLeftHalf
@@ -157,14 +166,14 @@ export default function TrackRoulette({ tracks }: { tracks: Track[] }) {
                     x={labelPos.x}
                     y={labelPos.y}
                     fill={textColor}
-                    fontSize={sliceCount > 8 ? 6.5 : 8.5}
+                    fontSize={labelFontSize}
                     fontWeight={700}
                     fontFamily="Rajdhani, sans-serif"
                     textAnchor="middle"
                     dominantBaseline="middle"
                     transform={`rotate(${textRotation}, ${labelPos.x}, ${labelPos.y})`}
                   >
-                    {truncateLabel(track.name, sliceCount > 8 ? 18 : 22)}
+                    {truncateLabel(track.name, maxLabelChars)}
                   </text>
                 </g>
               );
@@ -245,7 +254,14 @@ function describeSlice(cx: number, cy: number, r: number, startAngle: number, en
   ].join(" ");
 }
 
+function maxCharsForSlice(sliceAngleDeg: number, radius: number, fontSize: number) {
+  const chord = 2 * radius * Math.sin((sliceAngleDeg * Math.PI) / 360);
+  const usableWidth = chord * 0.82;
+  const avgCharWidth = fontSize * CHAR_WIDTH_FACTOR;
+  return Math.max(4, Math.floor(usableWidth / avgCharWidth));
+}
+
 function truncateLabel(name: string, maxLength: number) {
   if (name.length <= maxLength) return name;
   return `${name.slice(0, maxLength - 1)}…`;
-                  }
+}
