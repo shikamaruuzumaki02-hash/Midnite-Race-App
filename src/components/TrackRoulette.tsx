@@ -33,10 +33,6 @@ export default function TrackRoulette({ tracks }: { tracks: Track[] }) {
   const sliceCount = filteredTracks.length;
   const sliceAngle = sliceCount > 0 ? 360 / sliceCount : 0;
   const labelFontSize = sliceCount > 8 ? 6.5 : 8.5;
-  // Limite de caracteres calculado a partir do espaço real da fatia
-  // (corda do arco no raio do texto), não da contagem total de pistas —
-  // evita nomes vazando quando o filtro por mapa deixa poucas fatias
-  // largas mas com nomes longos.
   const maxLabelChars = maxCharsForSlice(sliceAngle, LABEL_RADIUS, labelFontSize);
 
   function handleFiltroChange(value: Mapa | "todos") {
@@ -176,6 +172,26 @@ export default function TrackRoulette({ tracks }: { tracks: Track[] }) {
                     {truncateLabel(track.name, maxLabelChars)}
                   </text>
                 </g>
+              );
+            })}
+
+            {/* Divisórias entre fatias — desenhadas por cima de todas,
+                garantem separação visível mesmo quando fatias vizinhas
+                calham com a mesma cor (número ímpar de fatias). */}
+            {filteredTracks.map((track, i) => {
+              const dividerAngle = i * sliceAngle;
+              const outer = polarToCartesian(100, 100, 95, dividerAngle);
+              return (
+                <line
+                  key={`divider-${track.id}`}
+                  x1={100}
+                  y1={100}
+                  x2={outer.x}
+                  y2={outer.y}
+                  stroke="#0a0a0c"
+                  strokeWidth={1.6}
+                  opacity={0.85}
+                />
               );
             })}
           </svg>
