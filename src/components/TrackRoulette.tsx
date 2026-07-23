@@ -8,7 +8,12 @@ const SLICE_COLORS = ["#ff5a1f", "#1a1a1e"];
 
 const SPIN_DURATION_MS = 3200;
 
-const LABEL_RADIUS = 64;
+// Faixa radial onde o texto pode viver: começa perto do hub e termina perto da borda,
+// sem tocar em nenhum dos dois.
+const LABEL_INNER_RADIUS = 30;
+const LABEL_OUTER_RADIUS = 88;
+const RADIAL_SAFETY_MARGIN = 0.92; // margem extra pra não encostar nos limites acima
+
 const CHAR_WIDTH_FACTOR = 0.58;
 
 const MAPA_FILTROS: { value: Mapa | "todos"; label: string }[] = [
@@ -33,7 +38,10 @@ export default function TrackRoulette({ tracks }: { tracks: Track[] }) {
   const sliceCount = filteredTracks.length;
   const sliceAngle = sliceCount > 0 ? 360 / sliceCount : 0;
   const labelFontSize = sliceCount > 8 ? 6.5 : 8.5;
-  const maxLabelChars = maxCharsForSlice(sliceAngle, LABEL_RADIUS, labelFontSize);
+  // Não depende mais do ângulo da fatia: o texto corre ao longo do raio,
+  // então o comprimento disponível é sempre o mesmo (hub -> borda),
+  // independente de quantas fatias existem.
+  const maxLabelChars = maxCharsForRadialSpan(labelFontSize);
 
   function handleFiltroChange(value: Mapa | "todos") {
     if (spinning) return;
@@ -139,12 +147,20 @@ export default function TrackRoulette({ tracks }: { tracks: Track[] }) {
               const endAngle = startAngle + sliceAngle;
               const path = describeSlice(100, 100, 95, startAngle, endAngle);
               const labelAngle = startAngle + sliceAngle / 2;
-              const labelPos = polarToCartesian(100, 100, LABEL_RADIUS, labelAngle);
+
+              // Ponto perto do hub — é daqui que o texto nasce e cresce em direção à borda,
+              // em vez de ficar centralizado num raio fixo.
+              const labelOrigin = polarToCartesian(100, 100, LABEL_INNER_RADIUS, labelAngle);
 
               const isLeftHalf = labelAngle > 90 && labelAngle < 270;
               const textRotation = isLeftHalf
                 ? labelAngle - 90 + 180
                 : labelAngle - 90;
+
+              // Do lado esquerdo o texto é rotacionado +180° pra não ficar de cabeça
+              // pra baixo; usar text-anchor="end" nesse caso faz o texto crescer pra
+              // fora (rumo à borda) igual do lado direito, em vez de crescer pro centro.
+              const textAnchor = isLeftHalf ? "end" : "start";
 
               const fillColor = SLICE_COLORS[i % SLICE_COLORS.length];
               const textColor = fillColor === "#ff5a1f" ? "#0a0a0c" : "#e8e6e1";
@@ -159,15 +175,15 @@ export default function TrackRoulette({ tracks }: { tracks: Track[] }) {
                     filter="url(#sliceGlow)"
                   />
                   <text
-                    x={labelPos.x}
-                    y={labelPos.y}
+                    x={labelOrigin.x}
+                    y={labelOrigin.y}
                     fill={textColor}
                     fontSize={labelFontSize}
                     fontWeight={700}
                     fontFamily="Rajdhani, sans-serif"
-                    textAnchor="middle"
+                    textAnchor={textAnchor}
                     dominantBaseline="middle"
-                    transform={`rotate(${textRotation}, ${labelPos.x}, ${labelPos.y})`}
+                    transform={`rotate(${textRotation}, ${labelOrigin.x}, ${labelOrigin.y})`}
                   >
                     {truncateLabel(track.name, maxLabelChars)}
                   </text>
@@ -270,11 +286,10 @@ function describeSlice(cx: number, cy: number, r: number, startAngle: number, en
   ].join(" ");
 }
 
-function maxCharsForSlice(sliceAngleDeg: number, radius: number, fontSize: number) {
-  const chord = 2 * radius * Math.sin((sliceAngleDeg * Math.PI) / 360);
-  const usableWidth = chord * 0.82;
+function maxCharsForRadialSpan(fontSize: number) {
+  const radialSpan = (LABEL_OUTER_RADIUS - LABEL_INNER_RADIUS) * RADIAL_SAFETY_MARGIN;
   const avgCharWidth = fontSize * CHAR_WIDTH_FACTOR;
-  return Math.max(4, Math.floor(usableWidth / avgCharWidth));
+  return Math.max(4, Math.floor(radialSpan / avgCharWidth));
 }
 
 function truncateLabel(name: string, maxLength: number) {
