@@ -23,8 +23,6 @@ const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 2.5;
 const ZOOM_STEP = 0.25;
 
-// Cantos chanfrados usados em todos os cards e no selo VS — o "corte diagonal"
-// que substitui o retângulo puro / moldura PNG antiga.
 const CARD_CHAMFER = "polygon(20px 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%, 0 20px)";
 const CHIP_CHAMFER = "polygon(0 0, 100% 0, 100% 100%, 5px 100%, 0 calc(100% - 5px))";
 const VS_CHAMFER = "polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px)";
@@ -65,24 +63,34 @@ type ConnectorPath = { id: string; d: string; decided: boolean };
 
 /**
  * Visualização do bracket de mata-mata: rodadas lado a lado, conectadas por
- * trilhas em curva orgânica (bezier), calculadas em runtime a partir da
- * posição real de cada card na tela — não mais elbows de 90° fixos por CSS.
- * Cada confronto é um card "banner": foto de cada piloto sangrando de um
- * lado (com máscara em gradiente) e o nome grande sobre o fundo escuro do
- * outro lado, um selo VS chanfrado na emenda entre os dois, e cantos
- * chanfrados no lugar da moldura PNG antiga.
+ * trilhas em curva orgânica (bezier). Cada confronto é um card "banner":
+ * foto de cada piloto sangrando de um lado (com máscara em gradiente) e o
+ * nome grande sobre o fundo escuro do outro lado, um selo VS chanfrado na
+ * emenda entre os dois, cantos chanfrados.
  *
- * A trilha acende em âmbar (e a própria borda do card ganha glow) quando o
- * confronto de origem já tem vencedor definido. A trilha até a ficha de
- * campeão usa a mesma lógica, então o visual é consistente do início ao fim
- * do bracket.
+ * Duas coisas são calculadas em runtime, nessa ordem, a cada mudança em
+ * `matches`/`numPlayers`:
+ *
+ * 1. POSIÇÃO — cada card da 2ª rodada em diante é fixado (position:
+ *    absolute; top) exatamente no meio vertical entre os dois cards da
+ *    rodada anterior que alimentam ele. Isso substitui a tentativa antiga
+ *    de centralizar via flexbox (`justify-around`), que só aproxima e
+ *    desalinha assim que os cards têm alturas ligeiramente diferentes.
+ *    Só a primeira rodada fica em fluxo normal (flex + gap) — ela é a
+ *    "régua" que todas as outras se alinham a partir dela.
+ *
+ * 2. CONECTORES — com todo mundo já na posição final, o <svg> de trilhas é
+ *    recalculado a partir da posição real de cada card (`getBoundingClientRect`
+ *    sobre `[data-match-seam]`, que é só a área das duas faixas de piloto,
+ *    sem a barra de pista/horário acima — é ali, na emenda onde fica o
+ *    selo VS, que a trilha deve mirar).
  *
  * Por padrão tem scroll horizontal (pensado para celular) e, no desktop,
  * controles de zoom (+/-/reset), zoom com Ctrl+roda do mouse e arrastar com
  * o mouse para navegar. Quando usado dentro de uma exportação de imagem
  * (ExportableBracket), a prop `scrollable={false}` desativa tudo isso e
- * deixa o conteúdo na largura total, sem zoom, para a captura incluir todas
- * as rodadas — os conectores continuam funcionando normalmente nesse modo.
+ * deixa o conteúdo na largura total, sem zoom — os cálculos acima continuam
+ * funcionando normalmente nesse modo.
  */
 export default function BracketView({
   matches,
@@ -102,11 +110,12 @@ export default function BracketView({
   const contentRef = useRef<HTMLDivElement>(null);
   const dragState = useRef({ startX: 0, startY: 0, scrollLeft: 0, scrollTop: 0, moved: false });
 
-  // Mede o tamanho "natural" (sem escala) do conteúdo — usado tanto pra
-  // calcular a área de scroll (modo scrollable) quanto pro tamanho do <svg>
-  // de conectores (nos dois modos). transform: scale() não altera
-  // offsetWidth/Height, então o ResizeObserver sempre reporta o tamanho
-  // real, independente do zoom.
+  // Referências pros cards e colunas de rodada — usadas pelo passe de
+  // centralização abaixo. Chaveadas por id de match / nome de rodada
+  // porque a ordem de montagem no React não é garantida.
+  const cardRefs = useRef(new Map<string, HTMLDivElement>());
+  const roundRefs = useRef(new Map<string, HTMLDivElement>());
+
   useEffect(() => {
     if (!contentRef.current) return;
     const el = contentRef.current;
@@ -124,12 +133,6 @@ export default function BracketView({
     return () => observer.disconnect();
   }, [matches, numPlayers]);
 
-  // Recalcula os conectores a partir da posição real de cada card na tela.
-  // `contentRef` é o próprio elemento que recebe `transform: scale(zoom)`,
-  // então os retângulos filhos já vêm "escalados"; dividir por zoom
-  // devolve as coordenadas pro espaço natural (não-escalado) em que o
-  // <svg> é desenhado — como o <svg> é filho do mesmo elemento escalado,
-  // ele acompanha o zoom junto com os cards automaticamente.
   const recomputeConnectors = useCallback(() => {
     const root = contentRef.current;
     if (!root) return;
@@ -184,9 +187,94 @@ export default function BracketView({
     setConnectorPaths(next);
   }, [zoom]);
 
+  // Passe de centralização: fixa cada card da 2ª rodada em diante no meio
+  // exato entre os dois cards que o alimentam. Só depende dos dados
+  // (matches/numPlayers) — a posição calculada é local ao conteúdo
+  // não-escalado, então continua correta em qualquer nível de zoom sem
+  // precisar recalcular por causa dele.
+  useLayoutEffect(() => {
+    const root = contentRef.current;
+    if (!root) return;
+
+    let roundOrderLocal: string[];
+    try {
+      roundOrderLocal = getRoundSequence(numPlayers);
+    } catch {
+      return;
+    }
+
+    const matchesByRoundLocal = new Map<string, Match[]>();
+    for (const round of roundOrderLocal) {
+      matchesByRoundLocal.set(round, matches.filter((m) => m.round === round));
+    }
+    const renderedRoundsLocal = roundOrderLocal.filter(
+      (r) => (matchesByRoundLocal.get(r)?.length ?? 0) > 0
+    );
+    if (renderedRoundsLocal.length === 0) return;
+
+    // Limpa qualquer posicionamento de uma medição anterior antes de
+    // remedir — senão a rodada 1 herda alturas infladas de uma passada
+    // velha e todo o resto do cálculo fica errado.
+    cardRefs.current.forEach((el) => {
+      el.style.position = "";
+      el.style.top = "";
+      el.style.left = "";
+      el.style.right = "";
+    });
+    roundRefs.current.forEach((el) => {
+      el.style.height = "";
+    });
+
+    const rootRect = root.getBoundingClientRect();
+    const localTop = (el: HTMLElement) => (el.getBoundingClientRect().top - rootRect.top) / zoom;
+    const localHeight = (el: HTMLElement) => el.getBoundingClientRect().height / zoom;
+    const localCenter = (el: HTMLElement) => localTop(el) + localHeight(el) / 2;
+
+    const firstRoundEl = roundRefs.current.get(renderedRoundsLocal[0]);
+    const baselineHeight = firstRoundEl ? localHeight(firstRoundEl) : 0;
+
+    let previousCenters: number[] = [];
+
+    renderedRoundsLocal.forEach((roundName, roundIdx) => {
+      const roundMatchesLocal = matchesByRoundLocal.get(roundName) ?? [];
+      const cards = roundMatchesLocal
+        .map((m) => cardRefs.current.get(m.id))
+        .filter((el): el is HTMLDivElement => !!el);
+
+      if (roundIdx === 0) {
+        // Rodada base: fica em fluxo normal (flex + gap), só medimos.
+        previousCenters = cards.map((c) => localCenter(c));
+        return;
+      }
+
+      const roundEl = roundRefs.current.get(roundName);
+      if (roundEl && baselineHeight > 0) {
+        roundEl.style.height = `${baselineHeight}px`;
+      }
+
+      const nextCenters: number[] = [];
+      cards.forEach((card, idx) => {
+        const a = previousCenters[idx * 2];
+        const b = previousCenters[idx * 2 + 1];
+        const center = b !== undefined ? (a + b) / 2 : a;
+        if (center === undefined) return;
+        const height = localHeight(card);
+        card.style.position = "absolute";
+        card.style.left = "0";
+        card.style.right = "0";
+        card.style.top = `${center - height / 2}px`;
+        nextCenters.push(center);
+      });
+      previousCenters = nextCenters;
+    });
+
+    recomputeConnectors();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matches, numPlayers]);
+
   useLayoutEffect(() => {
     recomputeConnectors();
-  }, [recomputeConnectors, matches, naturalSize]);
+  }, [recomputeConnectors, naturalSize]);
 
   useEffect(() => {
     window.addEventListener("resize", recomputeConnectors);
@@ -279,17 +367,27 @@ export default function BracketView({
 
   const roundsContent = (
     <>
-      {renderedRounds.map((roundName) => {
+      {renderedRounds.map((roundName, roundIdx) => {
         const roundMatches = matchesByRound.get(roundName) ?? [];
-        // Agrupar em pares aqui é só pra manter o espaçamento vertical
-        // alinhado entre rodadas — os conectores em si são calculados à
-        // parte, direto das posições reais no DOM (ver recomputeConnectors).
+        const isBaseRound = roundIdx === 0;
+        // Na rodada base isso só agrupa visualmente em pares (gap). Da 2ª
+        // rodada em diante o agrupamento em si não importa mais pro
+        // espaçamento — cada card é posicionado via inline style no passe
+        // de centralização — mas mantemos a mesma estrutura de render.
         const pairs = chunkPairs(roundMatches, 2);
 
         return (
-          <div key={roundName} data-round={roundName} className="flex flex-col gap-3 w-[19rem] shrink-0">
+          <div
+            key={roundName}
+            data-round={roundName}
+            ref={(el) => {
+              if (el) roundRefs.current.set(roundName, el);
+              else roundRefs.current.delete(roundName);
+            }}
+            className="relative flex flex-col gap-3 w-[19rem] shrink-0"
+          >
             <div
-              className="self-center inline-flex items-center gap-1.5 px-3 py-1 bg-ember/10 border border-ember/30"
+              className="self-center inline-flex items-center gap-1.5 px-3 py-1 bg-ember/10 border border-ember/30 shrink-0"
               style={{ clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 100%, 10px 100%)" }}
             >
               <Flag size={11} className="text-ember" />
@@ -298,11 +396,24 @@ export default function BracketView({
               </h3>
             </div>
 
-            <div className="flex flex-col gap-7 justify-around flex-1">
+            <div
+              className={
+                isBaseRound
+                  ? "relative flex flex-col gap-7 justify-around flex-1"
+                  : "relative flex-1"
+              }
+            >
               {pairs.map((pair, pairIdx) => (
-                <div key={pairIdx} className="flex flex-col gap-7">
+                <div key={pairIdx} className={isBaseRound ? "flex flex-col gap-7" : "contents"}>
                   {pair.map((m) => (
-                    <BracketMatchCard key={m.id} match={m} />
+                    <BracketMatchCard
+                      key={m.id}
+                      match={m}
+                      cardRef={(el) => {
+                        if (el) cardRefs.current.set(m.id, el);
+                        else cardRefs.current.delete(m.id);
+                      }}
+                    />
                   ))}
                 </div>
               ))}
@@ -321,9 +432,8 @@ export default function BracketView({
 
   const connectorsSvg = (
     <svg
-      className="pointer-events-none absolute inset-0 overflow-visible"
-      width={naturalSize.width || undefined}
-      height={naturalSize.height || undefined}
+      className="pointer-events-none absolute inset-0 z-0"
+      style={{ overflow: "visible" }}
     >
       {connectorPaths.map((p) => (
         <path
@@ -427,7 +537,13 @@ export default function BracketView({
   );
 }
 
-function BracketMatchCard({ match }: { match: Match }) {
+function BracketMatchCard({
+  match,
+  cardRef,
+}: {
+  match: Match;
+  cardRef?: (el: HTMLDivElement | null) => void;
+}) {
   const isDecided = match.status === "COMPLETED" && !!match.winner_id;
   const trackName = primaryTrackName(match);
   const timeLabel = match.scheduled_at
@@ -441,9 +557,10 @@ function BracketMatchCard({ match }: { match: Match }) {
 
   return (
     <div
+      ref={cardRef}
       data-match-card
       data-decided={isDecided ? "true" : "false"}
-      className="relative bg-asphalt-card border transition-[box-shadow,border-color] duration-500"
+      className="relative z-10 bg-asphalt-card border transition-[box-shadow,border-color] duration-500"
       style={{
         clipPath: CARD_CHAMFER,
         borderColor: isDecided ? "rgba(255,90,31,0.5)" : undefined,
@@ -468,13 +585,6 @@ function BracketMatchCard({ match }: { match: Match }) {
         </div>
       )}
 
-      {/*
-        `data-match-seam` marca só as duas faixas dos pilotos (sem a barra
-        de pista/horário acima). É nesse elemento — não no card inteiro —
-        que os conectores miram, porque o centro geométrico do card inteiro
-        fica puxado pra baixo pela barra de meta, desalinhando a trilha em
-        relação à emenda visual onde o selo VS fica.
-      */}
       <div data-match-seam className="relative">
         <BannerRow
           name={match.driver_a?.gamertag ?? "A definir"}
@@ -533,9 +643,6 @@ function BannerRow({
 }) {
   const eliminated = isDecided && !isWinner;
   const bgColor = colorFromName(name);
-  // A foto sangra de um lado e o nome fica no espaço escuro do outro —
-  // alternando entre as duas faixas do card pra criar o ritmo espelhado do
-  // formato "banner".
   const photoOnLeft = position === "top";
 
   return (
