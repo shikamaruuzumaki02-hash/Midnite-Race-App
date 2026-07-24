@@ -138,10 +138,20 @@ export default function BracketView({
     if (!root) return;
     const rootRect = root.getBoundingClientRect();
 
+    // A escala "total" de tela pode vir de mais de um transform empilhado
+    // — o próprio zoom deste componente, mas também qualquer wrapper
+    // externo (ex.: o fit-to-screen do ExportableBracket) que escale este
+    // componente inteiro por fora. Em vez de confiar só no `zoom` que este
+    // componente conhece, medimos a razão real entre o tamanho renderizado
+    // na tela e o tamanho "de verdade" do layout (offsetWidth ignora
+    // qualquer transform) — isso captura a escala acumulada de qualquer
+    // ancestral, sem precisar saber quantos transforms existem por cima.
+    const scaleFactor = root.offsetWidth ? rootRect.width / root.offsetWidth : 1;
+
     const toLocal = (rect: DOMRect, edge: "left" | "right") => {
       const x = (edge === "right" ? rect.right : rect.left) - rootRect.left;
       const y = rect.top + rect.height / 2 - rootRect.top;
-      return { x: x / zoom, y: y / zoom };
+      return { x: x / scaleFactor, y: y / scaleFactor };
     };
 
     const seamRect = (card: HTMLElement) => {
@@ -185,7 +195,7 @@ export default function BracketView({
     }
 
     setConnectorPaths(next);
-  }, [zoom]);
+  }, []);
 
   // Passe de centralização: fixa cada card da 2ª rodada em diante no meio
   // exato entre os dois cards que o alimentam. Só depende dos dados
@@ -226,8 +236,9 @@ export default function BracketView({
     });
 
     const rootRect = root.getBoundingClientRect();
-    const localTop = (el: HTMLElement) => (el.getBoundingClientRect().top - rootRect.top) / zoom;
-    const localHeight = (el: HTMLElement) => el.getBoundingClientRect().height / zoom;
+    const scaleFactor = root.offsetWidth ? rootRect.width / root.offsetWidth : 1;
+    const localTop = (el: HTMLElement) => (el.getBoundingClientRect().top - rootRect.top) / scaleFactor;
+    const localHeight = (el: HTMLElement) => el.getBoundingClientRect().height / scaleFactor;
     const localCenter = (el: HTMLElement) => localTop(el) + localHeight(el) / 2;
 
     const firstRoundEl = roundRefs.current.get(renderedRoundsLocal[0]);
