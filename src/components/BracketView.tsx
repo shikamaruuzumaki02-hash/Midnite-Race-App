@@ -403,9 +403,31 @@ export default function BracketView({
                   : "relative flex-1"
               }
             >
-              {pairs.map((pair, pairIdx) => (
-                <div key={pairIdx} className={isBaseRound ? "flex flex-col gap-7" : "contents"}>
-                  {pair.map((m) => (
+              {isBaseRound
+                ? pairs.map((pair, pairIdx) => (
+                    <div key={pairIdx} className="flex flex-col gap-7">
+                      {pair.map((m) => (
+                        <BracketMatchCard
+                          key={m.id}
+                          match={m}
+                          cardRef={(el) => {
+                            if (el) cardRefs.current.set(m.id, el);
+                            else cardRefs.current.delete(m.id);
+                          }}
+                        />
+                      ))}
+                    </div>
+                  ))
+                : // Da 2ª rodada em diante os cards são filhos DIRETOS deste
+                  // container (sem nenhum wrapper "display: contents" no
+                  // meio) — cada um é posicionado via inline style (top)
+                  // calculado no passe de centralização. Um wrapper com
+                  // `display: contents` envolvendo um filho `position:
+                  // absolute` tem resolução de "ancestral posicionado"
+                  // inconsistente entre motores de navegador, e foi essa a
+                  // causa de as trilhas e o posicionamento sumirem só no
+                  // site (ao vivo) e não na exportação.
+                  roundMatches.map((m) => (
                     <BracketMatchCard
                       key={m.id}
                       match={m}
@@ -415,8 +437,6 @@ export default function BracketView({
                       }}
                     />
                   ))}
-                </div>
-              ))}
             </div>
           </div>
         );
