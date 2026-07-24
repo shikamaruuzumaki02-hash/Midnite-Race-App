@@ -744,14 +744,16 @@ function BannerRow({
         className="absolute inset-0"
         style={{
           background:
-            "linear-gradient(180deg, rgba(0,0,0,0.15), rgba(0,0,0,0.55) 70%, rgba(0,0,0,0.78))",
+            position === "top"
+              ? "linear-gradient(180deg, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.1) 45%, rgba(0,0,0,0.35) 100%)"
+              : "linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.1) 55%, rgba(0,0,0,0.75) 100%)",
         }}
       />
 
       {isWinner && (
         <span
           className={`absolute z-10 flex items-center gap-1 px-2 py-0.5 font-display text-[9px] font-semibold uppercase tracking-wide text-black ${
-            position === "top" ? "top-2 left-3" : "bottom-2 right-3"
+            position === "top" ? "bottom-2 left-3" : "top-2 right-3"
           }`}
           style={{ background: LINE_DECIDED, clipPath: CHIP_CHAMFER }}
         >
@@ -760,18 +762,20 @@ function BannerRow({
         </span>
       )}
 
+      {/*
+        O nome fica na ponta EXTERNA do próprio banner — perto do topo do
+        card na faixa de cima, perto do rodapé na faixa de baixo — em vez
+        de perto da emenda com o outro piloto. Assim ele nunca disputa
+        espaço com o selo VS (que mora só na emenda) e pode aparecer por
+        inteiro, sem cortar nada, não importa o tamanho do gamertag.
+      */}
       <div
-        className={`absolute bottom-2 ${photoOnLeft ? "right-3 text-right" : "left-3 text-left"}`}
-        style={{
-          // Reserva um espaço fixo ao redor do centro (onde fica o selo
-          // VS + seu holofote) em vez de só uma % da largura do card —
-          // uma % generosa é o que deixava o nome entrar embaixo do selo
-          // em gamertags mais compridos.
-          maxWidth: "calc(50% - 40px)",
-        }}
+        className={`absolute max-w-[85%] ${position === "top" ? "top-2" : "bottom-2"} ${
+          photoOnLeft ? "right-3 text-right" : "left-3 text-left"
+        }`}
       >
         <span
-          className={`block font-display text-2xl font-bold uppercase leading-none truncate ${
+          className={`block whitespace-nowrap font-display text-2xl font-bold uppercase leading-none ${
             isWinner ? "" : eliminated ? "text-ink-dim line-through decoration-2" : "text-ink"
           }`}
           style={{
