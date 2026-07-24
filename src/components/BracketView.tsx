@@ -596,10 +596,33 @@ function BracketMatchCard({
         clipPath: CARD_CHAMFER,
         borderColor: isDecided ? "rgba(255,90,31,0.5)" : undefined,
         boxShadow: isDecided
-          ? "0 0 0 1px rgba(255,90,31,0.12), 0 0 18px rgba(255,90,31,0.10)"
-          : "none",
+          ? "inset 0 0 0 1px rgba(255,90,31,0.18), 0 0 0 1px rgba(255,90,31,0.12), 0 0 18px rgba(255,90,31,0.10)"
+          : "inset 0 0 0 1px rgba(255,255,255,0.03)",
       }}
     >
+      {/*
+        Cantos em L nos dois vértices que NÃO são chanfrados — mesmo motivo
+        visual já usado em outras caixas do app (ex.: "Próximas corridas").
+        Os outros dois cantos já têm o corte diagonal do chamfer, então só
+        estes dois precisam do acento.
+      */}
+      <span
+        aria-hidden="true"
+        className="absolute top-0 right-0 w-3 h-3 pointer-events-none transition-colors duration-500"
+        style={{
+          borderTop: `1.5px solid ${isDecided ? LINE_DECIDED : "#4a4a52"}`,
+          borderRight: `1.5px solid ${isDecided ? LINE_DECIDED : "#4a4a52"}`,
+        }}
+      />
+      <span
+        aria-hidden="true"
+        className="absolute bottom-0 left-0 w-3 h-3 pointer-events-none transition-colors duration-500"
+        style={{
+          borderBottom: `1.5px solid ${isDecided ? LINE_DECIDED : "#4a4a52"}`,
+          borderLeft: `1.5px solid ${isDecided ? LINE_DECIDED : "#4a4a52"}`,
+        }}
+      />
+
       {(trackName || timeLabel) && (
         <div className="flex items-center justify-between gap-2 px-3 py-1.5 bg-asphalt-bg/60 border-b border-asphalt-borderLight">
           <span className="flex items-center gap-1 font-mono text-[9px] text-ink-faint truncate">
@@ -636,6 +659,16 @@ function BracketMatchCard({
           isWinner={isDecided && match.winner_id === match.driver_b_id}
           isDecided={isDecided}
           position="bottom"
+        />
+
+        {/*
+          Holofote escuro atrás do selo VS — garante legibilidade mesmo se
+          algum pixel do nome do piloto chegar perto do centro, sem
+          depender só do corte de largura abaixo.
+        */}
+        <div
+          className="absolute left-1/2 top-1/2 z-[15] -translate-x-1/2 -translate-y-1/2 w-16 h-10 rounded-full pointer-events-none"
+          style={{ background: "radial-gradient(closest-side, rgba(11,11,13,0.85), transparent)" }}
         />
 
         <div
@@ -728,9 +761,14 @@ function BannerRow({
       )}
 
       <div
-        className={`absolute bottom-2 max-w-[56%] ${
-          photoOnLeft ? "right-3 text-right" : "left-3 text-left"
-        }`}
+        className={`absolute bottom-2 ${photoOnLeft ? "right-3 text-right" : "left-3 text-left"}`}
+        style={{
+          // Reserva um espaço fixo ao redor do centro (onde fica o selo
+          // VS + seu holofote) em vez de só uma % da largura do card —
+          // uma % generosa é o que deixava o nome entrar embaixo do selo
+          // em gamertags mais compridos.
+          maxWidth: "calc(50% - 40px)",
+        }}
       >
         <span
           className={`block font-display text-2xl font-bold uppercase leading-none truncate ${
