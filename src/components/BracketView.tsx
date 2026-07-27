@@ -155,6 +155,24 @@ export default function BracketView({
   const recomputeConnectors = useCallback(() => {
     const root = contentRef.current;
     if (!root) return;
+
+    let roundOrderLocal: string[];
+    try {
+      roundOrderLocal = getRoundSequence(numPlayers);
+    } catch {
+      return;
+    }
+
+    const byRound = new Map<string, Match[]>();
+    for (const r of roundOrderLocal) {
+      byRound.set(r, matches.filter((m) => m.round === r));
+    }
+    const renderedRoundsLocal = roundOrderLocal.filter((r) => (byRound.get(r)?.length ?? 0) > 0);
+    if (renderedRoundsLocal.length === 0) {
+      setConnectorPaths([]);
+      return;
+    }
+
     const rootRect = root.getBoundingClientRect();
 
     // A escala "total" de tela pode vir de mais de um transform empilhado
@@ -173,7 +191,9 @@ export default function BracketView({
       return { x: x / scaleFactor, y: y / scaleFactor };
     };
 
-    const seamRect = (card: HTMLElement) => {
+    const seamRectFor = (matchId: string) => {
+      const card = root.querySelector<HTMLElement>(`[data-match-id="${matchId}"]`);
+      if (!card) return null;
       const seam = card.querySelector<HTMLElement>("[data-match-seam]") ?? card;
       return seam.getBoundingClientRect();
     };
@@ -183,38 +203,57 @@ export default function BracketView({
       return `M ${p1.x} ${p1.y} C ${midX} ${p1.y}, ${midX} ${p2.y}, ${p2.x} ${p2.y}`;
     };
 
-    const roundEls = Array.from(root.querySelectorAll<HTMLElement>("[data-round]"));
     const next: ConnectorPath[] = [];
 
-    for (let i = 0; i < roundEls.length - 1; i++) {
-      const cards = Array.from(roundEls[i].querySelectorAll<HTMLElement>("[data-match-card]"));
-      const nextCards = Array.from(roundEls[i + 1].querySelectorAll<HTMLElement>("[data-match-card]"));
-      cards.forEach((card, idx) => {
-        const target = nextCards[Math.floor(idx / 2)];
-        if (!target) return;
-        const p1 = toLocal(seamRect(card), "right");
-        const p2 = toLocal(seamRect(target), "left");
-        next.push({
-          id: `${i}-${idx}`,
-          d: bezier(p1, p2),
-          decided: card.dataset.decided === "true",
+    // Quem alimenta quem NÃO é decidido pela posição no array — o
+    // pareamento de uma chave com seed (1v8, 4v5 do mesmo lado; 2v7, 3v6
+    // do outro) avança de forma intercalada, não sequencial. A única
+    // fonte confiável é o próprio dado: o confronto da rodada seguinte já
+    // tem `driver_a_id`/`driver_b_id`, e esses pilotos só chegaram ali por
+    // terem sido `winner_id` de algum confronto da rodada anterior.
+    for (let i = 0; i < renderedRoundsLocal.length - 1; i++) {
+      const currentRoundMatches = byRound.get(renderedRoundsLocal[i]) ?? [];
+      const nextRoundMatches = byRound.get(renderedRoundsLocal[i + 1]) ?? [];
+
+      nextRoundMatches.forEach((nextMatch) => {
+        const targetRect = seamRectFor(nextMatch.id);
+        if (!targetRect) return;
+
+        const feeders = currentRoundMatches.filter(
+          (m) =>
+            !!m.winner_id &&
+            (m.winner_id === nextMatch.driver_a_id || m.winner_id === nextMatch.driver_b_id)
+        );
+
+        feeders.forEach((feeder) => {
+          const sourceRect = seamRectFor(feeder.id);
+          if (!sourceRect) return;
+          const p1 = toLocal(sourceRect, "right");
+          const p2 = toLocal(targetRect, "left");
+          next.push({
+            id: `${feeder.id}-${nextMatch.id}`,
+            d: bezier(p1, p2),
+            decided: feeder.status === "COMPLETED" && !!feeder.winner_id,
+          });
         });
       });
     }
 
+    const trueFinalRoundName = roundOrderLocal[roundOrderLocal.length - 1];
+    const finalMatches = byRound.get(trueFinalRoundName) ?? [];
+    const finalMatch = finalMatches[0];
     const championEl = root.querySelector<HTMLElement>("[data-champion]");
-    const lastRoundEl = roundEls[roundEls.length - 1];
-    if (championEl && lastRoundEl) {
-      const lastCard = lastRoundEl.querySelector<HTMLElement>("[data-match-card]");
-      if (lastCard && lastCard.dataset.decided === "true") {
-        const p1 = toLocal(seamRect(lastCard), "right");
+    if (finalMatch && finalMatch.status === "COMPLETED" && finalMatch.winner_id && championEl) {
+      const sourceRect = seamRectFor(finalMatch.id);
+      if (sourceRect) {
+        const p1 = toLocal(sourceRect, "right");
         const p2 = toLocal(championEl.getBoundingClientRect(), "left");
         next.push({ id: "champion", d: bezier(p1, p2), decided: true });
       }
     }
 
     setConnectorPaths(next);
-  }, []);
+  }, [matches, numPlayers]);
 
   // Passe de centralização: fixa cada card da 2ª rodada em diante no meio
   // exato entre os dois cards que o alimentam. Só depende dos dados
@@ -263,17 +302,21 @@ export default function BracketView({
     const firstRoundEl = roundRefs.current.get(renderedRoundsLocal[0]);
     const baselineHeight = firstRoundEl ? localHeight(firstRoundEl) : 0;
 
-    let previousCenters: number[] = [];
+    // Mapa de centro vertical já resolvido por id de match — em vez de um
+    // array indexado, porque quem alimenta quem não é "posição 0 e 1 no
+    // array", é quem tem `winner_id` batendo com o `driver_a_id`/
+    // `driver_b_id` do confronto seguinte (ver nota em recomputeConnectors).
+    const centerByMatchId = new Map<string, number>();
 
     renderedRoundsLocal.forEach((roundName, roundIdx) => {
       const roundMatchesLocal = matchesByRoundLocal.get(roundName) ?? [];
-      const cards = roundMatchesLocal
-        .map((m) => cardRefs.current.get(m.id))
-        .filter((el): el is HTMLDivElement => !!el);
 
       if (roundIdx === 0) {
         // Rodada base: fica em fluxo normal (flex + gap), só medimos.
-        previousCenters = cards.map((c) => localCenter(c));
+        roundMatchesLocal.forEach((m) => {
+          const el = cardRefs.current.get(m.id);
+          if (el) centerByMatchId.set(m.id, localCenter(el));
+        });
         return;
       }
 
@@ -282,25 +325,33 @@ export default function BracketView({
         roundEl.style.height = `${baselineHeight}px`;
       }
 
-      const nextCenters: number[] = [];
-      cards.forEach((card, idx) => {
-        const a = previousCenters[idx * 2];
-        const b = previousCenters[idx * 2 + 1];
-        const center = b !== undefined ? (a + b) / 2 : a;
-        if (center === undefined) return;
+      const previousRoundMatches = matchesByRoundLocal.get(renderedRoundsLocal[roundIdx - 1]) ?? [];
+
+      roundMatchesLocal.forEach((m) => {
+        const card = cardRefs.current.get(m.id);
+        if (!card) return;
+
+        const feeders = previousRoundMatches.filter(
+          (pm) => !!pm.winner_id && (pm.winner_id === m.driver_a_id || pm.winner_id === m.driver_b_id)
+        );
+        const feederCenters = feeders
+          .map((f) => centerByMatchId.get(f.id))
+          .filter((c): c is number => c !== undefined);
+
+        if (feederCenters.length === 0) return;
+
+        const center = feederCenters.reduce((sum, c) => sum + c, 0) / feederCenters.length;
         const height = localHeight(card);
         card.style.position = "absolute";
         card.style.left = "0";
         card.style.right = "0";
         card.style.top = `${center - height / 2}px`;
-        nextCenters.push(center);
+        centerByMatchId.set(m.id, center);
       });
-      previousCenters = nextCenters;
     });
 
     recomputeConnectors();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matches, numPlayers]);
+  }, [matches, numPlayers, recomputeConnectors]);
 
   useLayoutEffect(() => {
     recomputeConnectors();
@@ -609,6 +660,7 @@ function BracketMatchCard({
     <div
       ref={cardRef}
       data-match-card
+      data-match-id={match.id}
       data-decided={isDecided ? "true" : "false"}
       className="relative z-10 bg-asphalt-card border transition-[box-shadow,border-color] duration-500"
       style={{
