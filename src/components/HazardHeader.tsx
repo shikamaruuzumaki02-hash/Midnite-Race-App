@@ -6,10 +6,10 @@ import type { LucideIcon } from "lucide-react";
  * "STANDINGS" / "POSITION · NAME · TIME"). Usado para títulos de seção
  * que merecem destaque mais forte que um <h2> comum.
  *
- * Por padrão é neutro (cinza-metálico/preto, como a maioria dos HUDs do
- * jogo) — passe accent={true} apenas nas seções que realmente precisam
- * chamar atenção com a cor de marca, não como estilo padrão de todo
- * cabeçalho do site.
+ * Por padrão é neutro — branco/prata forte sobre a faixa diagonal preta,
+ * como a maioria dos HUDs do jogo, sem depender de cor pra ter presença.
+ * Passe accent={true} apenas nas seções que realmente precisam chamar
+ * atenção com a cor de marca, não como estilo padrão de todo cabeçalho.
  */
 export default function HazardHeader({
   icon: Icon,
@@ -32,11 +32,11 @@ export default function HazardHeader({
     >
       <div className="flex items-center gap-2.5 px-4 py-2.5 bg-asphalt/70">
         {Icon && (
-          <Icon size={16} className={`shrink-0 ${accent ? "text-ember" : "text-ink-muted"}`} />
+          <Icon size={16} className={`shrink-0 ${accent ? "text-ember" : "text-ink"}`} />
         )}
         <h2
           className={`font-display text-sm tracking-[0.15em] ${
-            accent ? "text-ember" : "text-ink-muted"
+            accent ? "text-ember" : "text-ink"
           }`}
         >
           {title.toUpperCase()}
