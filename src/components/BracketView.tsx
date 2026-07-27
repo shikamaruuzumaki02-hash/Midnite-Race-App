@@ -59,6 +59,25 @@ function primaryTrackName(match: Match): string | null {
   return null;
 }
 
+/**
+ * O pareamento da chave (quem alimenta quem na próxima rodada) depende da
+ * ORDEM DE CRIAÇÃO dos matches de uma rodada — é a mesma convenção que
+ * `pairWinnersForNextRound` (em @/lib/bracket) já assume ao gerar a rodada
+ * seguinte. Só que nada garante que a query que busca os matches de volta
+ * do banco preserve essa ordem (sem um `order by` explícito, a ordem de
+ * retorno não é confiável). Por segurança, reordenamos aqui por
+ * `created_at` (com `id` como desempate, caso uma rodada inteira seja
+ * criada no mesmo milissegundo) antes de qualquer agrupamento em pares —
+ * assim a exibição fica correta mesmo que a query upstream não tenha
+ * ordenação nenhuma.
+ */
+function sortByCreationOrder(a: Match, b: Match): number {
+  const ta = new Date(a.created_at).getTime();
+  const tb = new Date(b.created_at).getTime();
+  if (ta !== tb) return ta - tb;
+  return a.id.localeCompare(b.id);
+}
+
 type ConnectorPath = { id: string; d: string; decided: boolean };
 
 /**
@@ -215,7 +234,7 @@ export default function BracketView({
 
     const matchesByRoundLocal = new Map<string, Match[]>();
     for (const round of roundOrderLocal) {
-      matchesByRoundLocal.set(round, matches.filter((m) => m.round === round));
+      matchesByRoundLocal.set(round, matches.filter((m) => m.round === round).sort(sortByCreationOrder));
     }
     const renderedRoundsLocal = roundOrderLocal.filter(
       (r) => (matchesByRoundLocal.get(r)?.length ?? 0) > 0
@@ -349,7 +368,7 @@ export default function BracketView({
   for (const round of roundOrder) {
     matchesByRound.set(
       round,
-      matches.filter((m) => m.round === round)
+      matches.filter((m) => m.round === round).sort(sortByCreationOrder)
     );
   }
 
