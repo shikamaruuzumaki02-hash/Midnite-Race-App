@@ -78,6 +78,70 @@ function sortByCreationOrder(a: Match, b: Match): number {
   return a.id.localeCompare(b.id);
 }
 
+/**
+ * A ordem de CRIAÇÃO de uma rodada não é a mesma coisa que a ordem VISUAL
+ * correta pra exibir sem cruzar trilha. Uma chave com seed (1v8, 4v5 de um
+ * lado; 2v7, 3v6 do outro) avança de forma intercalada — os dois
+ * confrontos que alimentam a mesma semifinal não são necessariamente
+ * vizinhos na ordem em que foram criados.
+ *
+ * Em vez de tentar adivinhar essa ordem por convenção, usamos a rodada
+ * seguinte (que já está correta, com `driver_a_id`/`driver_b_id` batendo
+ * com o `winner_id` de dois confrontos da rodada atual) pra DERIVAR a
+ * ordem certa: caminhamos de trás pra frente a partir da última rodada
+ * existente, e a cada passo substituímos cada confronto pelos seus dois
+ * alimentadores reais (na mesma posição), lado A antes de lado B. Isso
+ * empilha os "irmãos de chave" um do lado do outro em toda rodada
+ * anterior, sem precisar saber a regra de seed usada na geração.
+ *
+ * Rodadas sem uma próxima rodada ainda existente (a mais recente em
+ * andamento) não têm de onde derivar ordem — caem de volta pra ordem de
+ * criação, que é a única informação disponível nesse caso.
+ */
+function computeCanonicalOrder(
+  renderedRounds: string[],
+  matchesByRound: Map<string, Match[]>
+): Map<string, Match[]> {
+  const result = new Map<string, Match[]>();
+  if (renderedRounds.length === 0) return result;
+
+  const lastRoundName = renderedRounds[renderedRounds.length - 1];
+  let currentOrder = [...(matchesByRound.get(lastRoundName) ?? [])].sort(sortByCreationOrder);
+  result.set(lastRoundName, currentOrder);
+
+  for (let i = renderedRounds.length - 2; i >= 0; i--) {
+    const roundName = renderedRounds[i];
+    const roundMatches = matchesByRound.get(roundName) ?? [];
+    const used = new Set<string>();
+    const expanded: Match[] = [];
+
+    currentOrder.forEach((nextMatch) => {
+      const feederA = roundMatches.find(
+        (m) => !used.has(m.id) && m.winner_id && m.winner_id === nextMatch.driver_a_id
+      );
+      if (feederA) {
+        expanded.push(feederA);
+        used.add(feederA.id);
+      }
+      const feederB = roundMatches.find(
+        (m) => !used.has(m.id) && m.winner_id && m.winner_id === nextMatch.driver_b_id
+      );
+      if (feederB) {
+        expanded.push(feederB);
+        used.add(feederB.id);
+      }
+    });
+
+    // Sobras (rodada ainda sem next-round pra derivar de, ou algum caso
+    // não coberto acima) — ordem de criação como último recurso.
+    const remaining = roundMatches.filter((m) => !used.has(m.id)).sort(sortByCreationOrder);
+    currentOrder = [...expanded, ...remaining];
+    result.set(roundName, currentOrder);
+  }
+
+  return result;
+}
+
 type ConnectorPath = { id: string; d: string; decided: boolean };
 
 /**
@@ -271,14 +335,16 @@ export default function BracketView({
       return;
     }
 
-    const matchesByRoundLocal = new Map<string, Match[]>();
+    const rawMatchesByRoundLocal = new Map<string, Match[]>();
     for (const round of roundOrderLocal) {
-      matchesByRoundLocal.set(round, matches.filter((m) => m.round === round).sort(sortByCreationOrder));
+      rawMatchesByRoundLocal.set(round, matches.filter((m) => m.round === round));
     }
     const renderedRoundsLocal = roundOrderLocal.filter(
-      (r) => (matchesByRoundLocal.get(r)?.length ?? 0) > 0
+      (r) => (rawMatchesByRoundLocal.get(r)?.length ?? 0) > 0
     );
     if (renderedRoundsLocal.length === 0) return;
+
+    const matchesByRoundLocal = computeCanonicalOrder(renderedRoundsLocal, rawMatchesByRoundLocal);
 
     // Limpa qualquer posicionamento de uma medição anterior antes de
     // remedir — senão a rodada 1 herda alturas infladas de uma passada
@@ -446,10 +512,15 @@ export default function BracketView({
         : finalMatch.driver_b
       : null;
 
+  // Ordem visual de exibição — derivada da rodada seguinte (ver
+  // computeCanonicalOrder), não a ordem de criação. É essa a que decide
+  // em que posição (topo/base) cada card aparece dentro da rodada.
+  const canonicalByRound = computeCanonicalOrder(renderedRounds, matchesByRound);
+
   const roundsContent = (
     <>
       {renderedRounds.map((roundName, roundIdx) => {
-        const roundMatches = matchesByRound.get(roundName) ?? [];
+        const roundMatches = canonicalByRound.get(roundName) ?? [];
         const isBaseRound = roundIdx === 0;
         // Na rodada base isso só agrupa visualmente em pares (gap). Da 2ª
         // rodada em diante o agrupamento em si não importa mais pro
