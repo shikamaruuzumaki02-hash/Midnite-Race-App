@@ -29,7 +29,7 @@ export default function Sidebar({
     <>
       <button
         onClick={() => setMobileOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-30 w-10 h-10 flex items-center justify-center bg-asphalt-panel border border-asphalt-border rounded-sm text-ink"
+        className="lg:hidden fixed top-4 left-4 z-50 w-10 h-10 flex items-center justify-center bg-asphalt-panel border border-asphalt-border rounded-sm text-ink"
         aria-label="Abrir menu"
       >
         <Menu size={20} />
