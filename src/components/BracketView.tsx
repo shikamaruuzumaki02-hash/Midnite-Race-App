@@ -539,11 +539,11 @@ export default function BracketView({
             className="relative flex flex-col gap-3 w-[19rem] shrink-0"
           >
             <div
-              className="self-center inline-flex items-center gap-1.5 px-3 py-1 bg-ember/10 border border-ember/30 shrink-0"
+              className="self-center inline-flex items-center gap-1.5 px-3 py-1 bg-asphalt-card border border-asphalt-borderLight shrink-0"
               style={{ clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 100%, 10px 100%)" }}
             >
-              <Flag size={11} className="text-ember" />
-              <h3 className="font-display text-xs tracking-wider text-ember uppercase">
+              <Flag size={11} className="text-ink-faint" />
+              <h3 className="font-display text-xs tracking-wider text-ink-muted uppercase">
                 {roundName.toUpperCase()}
               </h3>
             </div>
@@ -627,7 +627,7 @@ export default function BracketView({
         className="pointer-events-none absolute inset-0 -z-10 opacity-30"
         style={{
           background:
-            "radial-gradient(ellipse 60% 40% at 20% 10%, rgba(255,90,31,0.08), transparent), radial-gradient(ellipse 50% 30% at 80% 90%, rgba(255,90,31,0.05), transparent)",
+            "radial-gradient(ellipse 60% 40% at 20% 10%, rgba(255,255,255,0.03), transparent), radial-gradient(ellipse 50% 30% at 80% 90%, rgba(255,255,255,0.02), transparent)",
         }}
       />
 
