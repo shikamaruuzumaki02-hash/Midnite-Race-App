@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Music } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Music, Loader2 } from "lucide-react";
 
 const PLAYLIST_ID = "PLgnM8w6PHYgdqsfLvJGA7dAL_2qaPnNyp";
 const STORAGE_KEY = "midnite-player-pos";
 const EXPAND_DURATION_MS = 5000;
+const DRAG_THRESHOLD = 6;
+const EDGE_MARGIN = 12;
 
 declare global {
   interface Window {
@@ -19,17 +21,27 @@ export default function MusicPlayerHUD() {
   const containerRef = useRef<HTMLDivElement>(null);
   const expandTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dragOffset = useRef({ x: 0, y: 0 });
-  const didDrag = useRef(false);
+  const startPoint = useRef({ x: 0, y: 0 });
+  const movedPastThreshold = useRef(false);
+  const primedRef = useRef(false);
+  const desiredVolumeRef = useRef(50);
 
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(false);
   const [trackName, setTrackName] = useState("");
   const [volume, setVolume] = useState(50);
   const [muted, setMuted] = useState(false);
 
-  const [pos, setPos] = useState({ x: 16, y: 16 });
-  const [side, setSide] = useState<"left" | "right">("right");
+  // Posição ancorada: x é offset da borda esquerda OU direita, dependendo de `side`
+  const [anchor, setAnchor] = useState({ x: 16, y: 16, side: "right" as "left" | "right" });
+  // Posição livre usada só durante o arraste (coordenadas absolutas left/top)
+  const [dragPos, setDragPos] = useState<{ left: number; top: number } | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [dragging, setDragging] = useState(false);
+
+  useEffect(() => {
+    desiredVolumeRef.current = volume;
+  }, [volume]);
 
   // Posição inicial (salva ou canto inferior direito)
   useEffect(() => {
@@ -37,12 +49,11 @@ export default function MusicPlayerHUD() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        setPos({ x: parsed.x, y: parsed.y });
-        setSide(parsed.side ?? "right");
+        setAnchor({ x: parsed.x, y: parsed.y, side: parsed.side ?? "right" });
         return;
       }
     } catch {}
-    setPos({ x: window.innerWidth - 76, y: window.innerHeight - 160 });
+    setAnchor({ x: EDGE_MARGIN, y: window.innerHeight - 160, side: "right" });
   }, []);
 
   // Carrega YouTube IFrame API
@@ -54,16 +65,33 @@ export default function MusicPlayerHUD() {
         playerVars: { listType: "playlist", list: PLAYLIST_ID, autoplay: 0 },
         events: {
           onReady: (e: any) => {
-            e.target.setVolume(volume);
+            e.target.setVolume(desiredVolumeRef.current);
+            // Pré-aquecimento: toca mudo e pausa logo em seguida, pra reduzir
+            // o atraso de buffering quando o usuário der play de verdade
+            e.target.mute();
+            e.target.playVideo();
           },
           onStateChange: (e: any) => {
             const S = window.YT.PlayerState;
+
+            if (!primedRef.current && e.data === S.PLAYING) {
+              primedRef.current = true;
+              e.target.pauseVideo();
+              e.target.unMute();
+              setTrackName(e.target.getVideoData()?.title ?? "");
+              return;
+            }
+
             if (e.data === S.PLAYING) {
               setIsPlaying(true);
+              setIsBuffering(false);
               setTrackName(e.target.getVideoData()?.title ?? "");
               triggerExpand();
             } else if (e.data === S.PAUSED) {
               setIsPlaying(false);
+              setIsBuffering(false);
+            } else if (e.data === S.BUFFERING) {
+              setIsBuffering(true);
             } else if (e.data === S.CUED) {
               setTrackName(e.target.getVideoData()?.title ?? "");
             }
@@ -97,7 +125,12 @@ export default function MusicPlayerHUD() {
 
   const togglePlay = () => {
     if (!playerRef.current) return;
-    isPlaying ? playerRef.current.pauseVideo() : playerRef.current.playVideo();
+    if (isPlaying) {
+      playerRef.current.pauseVideo();
+    } else {
+      setIsBuffering(true);
+      playerRef.current.playVideo();
+    }
   };
   const next = () => playerRef.current?.nextVideo();
   const prev = () => playerRef.current?.previousVideo();
@@ -120,47 +153,81 @@ export default function MusicPlayerHUD() {
     setMuted(!muted);
   };
 
-  // Drag
+  // Drag (com tolerância pra não confundir toque simples com arrastar)
   const handlePointerDown = (e: React.PointerEvent) => {
-    didDrag.current = false;
+    movedPastThreshold.current = false;
+    startPoint.current = { x: e.clientX, y: e.clientY };
     setDragging(true);
     const rect = containerRef.current?.getBoundingClientRect();
-    if (rect) dragOffset.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    if (rect) {
+      dragOffset.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      setDragPos({ left: rect.left, top: rect.top });
+    }
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!dragging) return;
-    didDrag.current = true;
-    setPos({ x: e.clientX - dragOffset.current.x, y: e.clientY - dragOffset.current.y });
+
+    const dx = e.clientX - startPoint.current.x;
+    const dy = e.clientY - startPoint.current.y;
+
+    if (!movedPastThreshold.current) {
+      if (Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) return;
+      movedPastThreshold.current = true;
+    }
+
+    const rect = containerRef.current?.getBoundingClientRect();
+    const w = rect?.width ?? 52;
+    const h = rect?.height ?? 52;
+
+    const left = Math.max(0, Math.min(e.clientX - dragOffset.current.x, window.innerWidth - w));
+    const top = Math.max(0, Math.min(e.clientY - dragOffset.current.y, window.innerHeight - h));
+
+    setDragPos({ left, top });
   };
 
   const handlePointerUp = () => {
     if (!dragging) return;
     setDragging(false);
 
+    // Toque simples (sem passar do limiar de arrastar) — deixa o onClick cuidar disso
+    if (!movedPastThreshold.current) {
+      setDragPos(null);
+      return;
+    }
+
     const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
+    if (!rect) {
+      setDragPos(null);
+      return;
+    }
 
     const newSide: "left" | "right" =
       rect.left + rect.width / 2 < window.innerWidth / 2 ? "left" : "right";
-    const margin = 12;
-    const snappedX = newSide === "left" ? margin : window.innerWidth - rect.width - margin;
-    const snappedY = Math.max(12, Math.min(rect.top, window.innerHeight - rect.height - 12));
 
-    setSide(newSide);
-    setPos({ x: snappedX, y: snappedY });
+    const newX = EDGE_MARGIN; // offset fixo da borda pra qual ele grudou
+    const newY = Math.max(EDGE_MARGIN, Math.min(rect.top, window.innerHeight - rect.height - EDGE_MARGIN));
+
+    setAnchor({ x: newX, y: newY, side: newSide });
+    setDragPos(null);
 
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ x: snappedX, y: snappedY, side: newSide }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ x: newX, y: newY, side: newSide }));
     } catch {}
   };
 
   const handleClick = () => {
-    if (didDrag.current) return;
+    if (movedPastThreshold.current) return;
     setExpanded((p) => !p);
     if (expandTimeoutRef.current) clearTimeout(expandTimeoutRef.current);
   };
+
+  const positionStyle: React.CSSProperties = dragPos
+    ? { left: dragPos.left, top: dragPos.top }
+    : anchor.side === "left"
+    ? { left: anchor.x, top: anchor.y }
+    : { right: anchor.x, top: anchor.y };
 
   return (
     <>
@@ -171,14 +238,14 @@ export default function MusicPlayerHUD() {
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
-        style={{ position: "fixed", left: pos.x, top: pos.y, zIndex: 60, touchAction: "none" }}
+        style={{ position: "fixed", ...positionStyle, zIndex: 60, touchAction: "none" }}
         className={`select-none ${dragging ? "cursor-grabbing" : "cursor-grab"}`}
       >
         <div
           onClick={handleClick}
           className={`flex items-center bg-asphalt/90 metal-surface border-[1.5px] border-ink-faint/40 rounded-full shadow-lg backdrop-blur-sm transition-all duration-300 overflow-hidden ${
             expanded ? "px-3 py-2 gap-2.5" : "p-2.5"
-          } ${side === "left" ? "flex-row" : "flex-row-reverse"}`}
+          } ${anchor.side === "left" ? "flex-row" : "flex-row-reverse"}`}
         >
           <div className="shrink-0 w-8 h-8 rounded-full bg-ember/15 flex items-center justify-center">
             <Music size={16} className="text-ember" />
@@ -198,7 +265,13 @@ export default function MusicPlayerHUD() {
             </button>
 
             <button type="button" onClick={(e) => { e.stopPropagation(); togglePlay(); }} className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-ember/80 hover:bg-ember" aria-label={isPlaying ? "Pausar" : "Tocar"}>
-              {isPlaying ? <Pause size={14} className="text-asphalt" /> : <Play size={14} className="text-asphalt ml-0.5" />}
+              {isBuffering ? (
+                <Loader2 size={14} className="text-asphalt animate-spin" />
+              ) : isPlaying ? (
+                <Pause size={14} className="text-asphalt" />
+              ) : (
+                <Play size={14} className="text-asphalt ml-0.5" />
+              )}
             </button>
 
             <button type="button" onClick={(e) => { e.stopPropagation(); next(); }} className="shrink-0 w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/10" aria-label="Próxima música">
@@ -225,4 +298,4 @@ export default function MusicPlayerHUD() {
       </div>
     </>
   );
-      }
+                }
