@@ -99,6 +99,19 @@ export default function LandingHero({ liveEvents = [] }: { liveEvents?: string[]
         <div className="absolute top-1/2 left-[-50%] w-[60%] h-px bg-gradient-to-r from-transparent via-ink/40 to-transparent animate-sweep-light" />
       </div>
 
+      {/* Crédito do vídeo de fundo */}
+      <div className="absolute bottom-3 right-4 z-10 flex items-baseline gap-1.5 opacity-60 pointer-events-none select-none">
+        <span className="font-mono italic font-light text-[11px] text-ink-muted tracking-wide">
+          video by
+        </span>
+        <span
+          className="text-xs text-ink-muted tracking-wide"
+          style={{ fontFamily: "'Bungee', system-ui", transform: "rotate(-3deg)" }}
+        >
+          LENNON8
+        </span>
+      </div>
+
       {/* Conteúdo central — sem px pra logo poder ocupar largura total */}
       <div className="relative z-10 flex flex-col items-center text-center w-full">
         <div
