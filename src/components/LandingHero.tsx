@@ -56,6 +56,20 @@ export default function LandingHero({ liveEvents = [] }: { liveEvents?: string[]
 
   return (
     <div className="relative flex-1 min-h-screen overflow-hidden bg-asphalt metal-surface vignette-dark flex items-center justify-center">
+      {/* Vídeo de fundo — baixa opacidade, integrado ao grafite */}
+      <video
+        className="absolute inset-0 w-full h-full object-cover opacity-20 mix-blend-luminosity pointer-events-none"
+        src="https://nznlnzvnabulnzzjrixx.supabase.co/storage/v1/object/public/videos/hero-bg.mp4"
+        autoPlay
+        muted
+        loop
+        playsInline
+        aria-hidden="true"
+      />
+
+      {/* Camada escura por cima do vídeo pra reforçar integração com o fundo */}
+      <div className="absolute inset-0 bg-asphalt/70" aria-hidden="true" />
+
       {/* Textura de fundo: grid sutil */}
       <div
         className="absolute inset-0 opacity-[0.035]"
@@ -153,4 +167,4 @@ export default function LandingHero({ liveEvents = [] }: { liveEvents?: string[]
       </div>
     </div>
   );
-              }
+}
