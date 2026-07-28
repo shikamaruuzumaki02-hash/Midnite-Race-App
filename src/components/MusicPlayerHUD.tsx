@@ -8,6 +8,7 @@ const STORAGE_KEY = "midnite-player-pos";
 const EXPAND_DURATION_MS = 5000;
 const DRAG_THRESHOLD = 6;
 const EDGE_MARGIN = 12;
+const TRACK_LABEL_WIDTH = 120;
 
 declare global {
   interface Window {
@@ -25,10 +26,12 @@ export default function MusicPlayerHUD() {
   const movedPastThreshold = useRef(false);
   const primedRef = useRef(false);
   const desiredVolumeRef = useRef(50);
+  const trackTextRef = useRef<HTMLSpanElement>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
   const [trackName, setTrackName] = useState("");
+  const [scrollDistance, setScrollDistance] = useState(0);
   const [volume, setVolume] = useState(50);
   const [muted, setMuted] = useState(false);
 
@@ -55,6 +58,15 @@ export default function MusicPlayerHUD() {
     } catch {}
     setAnchor({ x: EDGE_MARGIN, y: window.innerHeight - 160, side: "right" });
   }, []);
+
+  // Mede se o título estoura o espaço disponível, pra ativar o scroll
+  useEffect(() => {
+    if (!expanded) return;
+    const el = trackTextRef.current;
+    if (!el) return;
+    const overflow = el.scrollWidth - TRACK_LABEL_WIDTH;
+    setScrollDistance(overflow > 0 ? overflow : 0);
+  }, [trackName, expanded]);
 
   // Carrega YouTube IFrame API
   useEffect(() => {
@@ -232,6 +244,15 @@ export default function MusicPlayerHUD() {
   return (
     <>
       <div id="midnite-yt-player" className="hidden" />
+
+      {/* Keyframes do scroll de título (só definido uma vez) */}
+      <style>{`
+        @keyframes midnite-marquee {
+          0%, 12% { transform: translateX(0); }
+          88%, 100% { transform: translateX(var(--marquee-distance)); }
+        }
+      `}</style>
+
       <div
         ref={containerRef}
         onPointerDown={handlePointerDown}
@@ -253,12 +274,28 @@ export default function MusicPlayerHUD() {
 
           <div
             className={`flex items-center gap-2 overflow-hidden transition-all duration-300 ${
-              expanded ? "max-w-[280px] opacity-100" : "max-w-0 opacity-0"
+              expanded ? "max-w-[290px] opacity-100" : "max-w-0 opacity-0"
             }`}
           >
-            <span className="font-mono text-xs text-ink-muted whitespace-nowrap max-w-[110px] overflow-hidden text-ellipsis">
-              {trackName || "Carregando..."}
-            </span>
+            <div
+              className="overflow-hidden shrink-0"
+              style={{ width: TRACK_LABEL_WIDTH }}
+            >
+              <span
+                ref={trackTextRef}
+                className="inline-block font-display font-bold text-xs text-ink tracking-wide whitespace-nowrap"
+                style={
+                  scrollDistance > 0
+                    ? ({
+                        "--marquee-distance": `-${scrollDistance}px`,
+                        animation: `midnite-marquee ${Math.max(4, scrollDistance / 18)}s ease-in-out infinite`,
+                      } as React.CSSProperties)
+                    : undefined
+                }
+              >
+                {trackName || "Carregando..."}
+              </span>
+            </div>
 
             <button type="button" onClick={(e) => { e.stopPropagation(); prev(); }} className="shrink-0 w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/10" aria-label="Música anterior">
               <SkipBack size={14} className="text-ink" />
@@ -298,4 +335,4 @@ export default function MusicPlayerHUD() {
       </div>
     </>
   );
-                }
+}
