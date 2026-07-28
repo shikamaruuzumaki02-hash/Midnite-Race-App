@@ -9,6 +9,7 @@ const EXPAND_DURATION_MS = 5000;
 const DRAG_THRESHOLD = 6;
 const EDGE_MARGIN = 12;
 const TRACK_LABEL_WIDTH = 120;
+const YT_CONTAINER_ID = "midnite-yt-player-host";
 
 declare global {
   interface Window {
@@ -68,10 +69,28 @@ export default function MusicPlayerHUD() {
     setScrollDistance(overflow > 0 ? overflow : 0);
   }, [trackName, expanded]);
 
-  // Carrega YouTube IFrame API
+  // Cria o container do player do YouTube MANUALMENTE, fora da árvore do
+  // React (direto no document.body), e só uma vez por carregamento de página.
+  // Isso evita o conflito "insertBefore/removeChild is not a child of this
+  // node": o YouTube reescreve esse <div> por um <iframe> por fora do React,
+  // e se o React também tentar gerenciar esse nó (via JSX), os dois entram
+  // em conflito sobre quem é dono do elemento ao trocar de página.
   useEffect(() => {
+    let hostEl = document.getElementById(YT_CONTAINER_ID);
+    const createdNow = !hostEl;
+    if (!hostEl) {
+      hostEl = document.createElement("div");
+      hostEl.id = YT_CONTAINER_ID;
+      hostEl.style.position = "fixed";
+      hostEl.style.width = "0px";
+      hostEl.style.height = "0px";
+      hostEl.style.overflow = "hidden";
+      document.body.appendChild(hostEl);
+    }
+
     function initPlayer() {
-      playerRef.current = new window.YT.Player("midnite-yt-player", {
+      if (playerRef.current) return; // já inicializado (ex: HMR/remontagem)
+      playerRef.current = new window.YT.Player(YT_CONTAINER_ID, {
         height: "0",
         width: "0",
         playerVars: { listType: "playlist", list: PLAYLIST_ID, autoplay: 0 },
@@ -114,12 +133,16 @@ export default function MusicPlayerHUD() {
 
     if (window.YT && window.YT.Player) {
       initPlayer();
-    } else {
+    } else if (createdNow || !window.onYouTubeIframeAPIReady) {
       const tag = document.createElement("script");
       tag.src = "https://www.youtube.com/iframe_api";
       document.body.appendChild(tag);
       window.onYouTubeIframeAPIReady = initPlayer;
     }
+
+    // Sem cleanup proposital: o player e seu host devem sobreviver a
+    // navegações entre páginas (é um player global). Só seria destruído
+    // se o usuário recarregar a aba inteira.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -243,8 +266,6 @@ export default function MusicPlayerHUD() {
 
   return (
     <>
-      <div id="midnite-yt-player" className="hidden" />
-
       {/* Keyframes do scroll de título (só definido uma vez) */}
       <style>{`
         @keyframes midnite-marquee {
@@ -335,4 +356,4 @@ export default function MusicPlayerHUD() {
       </div>
     </>
   );
-}
+  }
