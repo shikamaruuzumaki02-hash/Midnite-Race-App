@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import MusicPlayerHUD from "@/components/MusicPlayerHUD";
 
 export const metadata: Metadata = {
   title: "Midnite Brasil SSR",
@@ -21,7 +22,10 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="MidniteBR" />
       </head>
-      <body className="font-body scanline-bg grain-bg relative">{children}</body>
+      <body className="font-body scanline-bg grain-bg relative">
+        {children}
+        <MusicPlayerHUD />
+      </body>
     </html>
   );
 }
